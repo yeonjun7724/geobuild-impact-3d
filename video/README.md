@@ -24,8 +24,10 @@ KMECAB=<python-mecab-ko target dir> python video/tts/synth.py
 node video/hf/build.mjs
 cd video/hf && DO_NOT_TRACK=1 HYPERFRAMES_NO_TELEMETRY=1 npx hyperframes check && \
   DO_NOT_TRACK=1 HYPERFRAMES_NO_TELEMETRY=1 npx hyperframes render -o renders/base.mp4 -q delivery --video-frame-format png
-# 5) 마감 (BGM을 지정하지 않으면 직접 합성한 잔잔한 패드 사용)
-node video/post/post.mjs --bgm path/to/youtube_audio_library_track.mp3
+# 5) 마감 — 현재 BGM: Satie 「Gymnopédie No. 1」 피아노(Teknopazzo, CC0, Wikimedia Commons)
+#    https://commons.wikimedia.org/wiki/File:Gymnopedie_No._1..ogg → video/post/bgm/gymnopedie_no1_cc0.ogg
+#    (--bgm을 빼면 직접 합성한 잔잔한 패드 사용)
+node video/post/post.mjs --bgm video/post/bgm/gymnopedie_no1_cc0.ogg
 ```
 
 결과: `video/out/GeoBuild_Impact_3D_JIRISO_DATA_STUDIO.mp4` (1920×1080, 30 fps).
