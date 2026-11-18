@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 from contextlib import asynccontextmanager
@@ -20,8 +21,8 @@ from .config import DATA_DIR, ENGINE_VERSION, JOB_BACKEND, REDIS_URL, code_commi
 from .db import AnalysisRun, Dataset, Project, ProvenanceRecord, Report, Scenario, SitePad, TerrainSource, get_session, init_db
 from .runner import make_cache_key
 from .scene import demo
-from .scene.builder import building_mesh, resolve_scenario, stable_hash
-from .scene.geometry import make_receivers
+from .scene.builder import LAYOUT_KEY, building_mesh, resolve_scenario, stable_hash
+from .scene.geometry import GeometryError, make_receivers
 from .schemas import AnalysisRequest, ProjectCreate, ProjectOut, ReportOut, RunOut, ScenarioCreate, TransformPatch
 
 @asynccontextmanager
@@ -75,7 +76,10 @@ def _badges(s: Session, p: Project) -> dict:
 
 def _scen_out(sc: Scenario) -> dict:
     return {"id": sc.id, "code": sc.code, "name": sc.name, "locked": sc.locked, "revision": sc.revision, "content_hash": sc.content_hash,
-            "transforms": services.transforms_of(sc), "updated_at": sc.updated_at.isoformat() if sc.updated_at else None}
+            "transforms": {k: v for k, v in services.transforms_of(sc).items() if k != LAYOUT_KEY},
+            "layout": (lambda l: None if not l else {"n_buildings": len(l["buildings"]), "source": l.get("source"),
+                                                     "buildings": [{"id": b["id"], "floors": b["floors"]} for b in l["buildings"]]})(services.layout_of(sc)),
+            "updated_at": sc.updated_at.isoformat() if sc.updated_at else None}
 
 
 def _project_out(s: Session, p: Project) -> dict:
@@ -157,6 +161,173 @@ def demo_seed(pid: str, s: Session = Depends(get_session)):
     except services.ServiceError as exc:
         _bad(exc)
     return _project_out(s, p)
+
+
+# ------------------------------------------------------------------------------------------- layout drawings (DXF / PDF / image)
+KOREAN_CRS = ["EPSG:5186", "EPSG:5187", "EPSG:5185", "EPSG:5188", "EPSG:5179", "EPSG:5174", "EPSG:2097"]
+DRAWING_MAX_BYTES = 80 * 1024 * 1024
+
+
+def _drawing_path(pid: str, did: str) -> Path:
+    if not did.isalnum():
+        raise HTTPException(400, "잘못된 도면 ID")
+    d = services.project_dir(pid) / "drawings"
+    hits = list(d.glob(f"{did}.*")) if d.exists() else []
+    src = [h for h in hits if not h.name.endswith(".png") or h.stem == did]
+    if not src:
+        raise HTTPException(404, "도면 없음")
+    return src[0]
+
+
+def _crs_guess(p: Project, bbox, unit_m: float) -> list[dict]:
+    if not bbox:
+        return []
+    fr = services.frame_of(p)
+    cx, cy = (bbox[0] + bbox[2]) / 2 * unit_m, (bbox[1] + bbox[3]) / 2 * unit_m
+    out = []
+    for crs in KOREAN_CRS:
+        try:
+            e = fr.crs_to_enu_xy([cx], [cy], crs)[0]
+        except Exception:  # noqa: BLE001
+            continue
+        d = float(np.hypot(*e))
+        if np.isfinite(d) and d < 5000:
+            out.append({"crs": crs, "distance_to_site_m": round(d, 1)})
+    return sorted(out, key=lambda r: r["distance_to_site_m"])
+
+
+@app.post("/api/projects/{pid}/drawings")
+async def upload_drawing(pid: str, file: UploadFile = File(...), page: int = 0, s: Session = Depends(get_session)):
+    from . import cad
+    import uuid
+    p = _project(s, pid)
+    raw = await file.read()
+    if len(raw) > DRAWING_MAX_BYTES:
+        raise HTTPException(413, "도면 파일은 80 MB 이하")
+    name = (file.filename or "drawing").lower()
+    ext = name.rsplit(".", 1)[-1] if "." in name else ""
+    if ext not in ("dxf", "pdf", "png", "jpg", "jpeg"):
+        raise HTTPException(400, "DXF, PDF, PNG, JPG만 지원 (DWG는 CAD에서 DXF로 저장)")
+    did = uuid.uuid4().hex[:12]
+    d = services.project_dir(pid) / "drawings"
+    d.mkdir(parents=True, exist_ok=True)
+    path = d / f"{did}.{ext}"
+    path.write_bytes(raw)
+    out = {"drawing_id": did, "filename": file.filename, "kind": "DXF" if ext == "dxf" else "PDF" if ext == "pdf" else "IMAGE",
+           "sha256": hashlib.sha256(raw).hexdigest()}
+    try:
+        if ext == "dxf":
+            info = cad.inspect(path)
+            out.update(info)
+            out["crs_candidates"] = _crs_guess(p, info["bbox"], info["unit_guess_m"])
+        elif ext == "pdf":
+            out.update(cad.render_pdf(path, page, d / f"{did}_p{page}.png"))
+            out["image_url"] = f"/api/projects/{pid}/drawings/{did}/image?page={page}"
+        else:
+            from PIL import Image
+            with Image.open(path) as im:
+                out.update({"width": im.width, "height": im.height, "pages": 1, "page": 0})
+            out["image_url"] = f"/api/projects/{pid}/drawings/{did}/image"
+    except cad.CadError as exc:
+        path.unlink(missing_ok=True)
+        raise HTTPException(400, str(exc)) from exc
+    return out
+
+
+@app.get("/api/projects/{pid}/drawings/{did}/image")
+def drawing_image(pid: str, did: str, page: int = 0, s: Session = Depends(get_session)):
+    from . import cad
+    _project(s, pid)
+    src = _drawing_path(pid, did)
+    if src.suffix == ".pdf":
+        png = src.with_name(f"{did}_p{page}.png")
+        if not png.exists():
+            try:
+                cad.render_pdf(src, page, png)
+            except cad.CadError as exc:
+                raise HTTPException(400, str(exc)) from exc
+        return FileResponse(png, media_type="image/png")
+    return FileResponse(src)
+
+
+@app.post("/api/projects/{pid}/drawings/{did}/extract")
+def drawing_extract(pid: str, did: str, body: dict, s: Session = Depends(get_session)):
+    from . import cad
+    p = _project(s, pid)
+    src = _drawing_path(pid, did)
+    if src.suffix != ".dxf":
+        raise HTTPException(400, "자동 추출은 DXF만 가능 - PDF/이미지는 화면에서 외곽선을 따라 그려 주세요")
+    layers = body.get("building_layers") or []
+    if not layers:
+        raise HTTPException(422, "건물 외곽선 레이어를 하나 이상 선택")
+    unit = float(body.get("unit_m") or 1.0)
+    try:
+        out = cad.extract(src, layers, body.get("boundary_layer"), unit, body.get("text_layers"))
+    except cad.CadError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    xs = [x for b in out["buildings"] for x, _ in b["ring"]]
+    ys = [y for b in out["buildings"] for _, y in b["ring"]]
+    if xs:
+        out["crs_candidates"] = _crs_guess(p, [min(xs), min(ys), max(xs), max(ys)], 1.0)
+    return out
+
+
+@app.put("/api/projects/{pid}/scenarios/{code}/layout")
+def put_layout(pid: str, code: str, body: dict, s: Session = Depends(get_session)):
+    """Store a drawn layout for scenario A or B. Rings come in drawing metres (DXF) or pixels (PDF/image) and are
+    placed with a projected CRS or a 2-point similarity transform."""
+    from . import cad
+    p = _project(s, pid)
+    if code not in ("A", "B"):
+        raise HTTPException(404, "시나리오는 A 또는 B")
+    pl = body.get("placement") or {}
+    fr = services.frame_of(p)
+    try:
+        if pl.get("mode") == "crs":
+            crs = pl.get("crs")
+            if crs not in KOREAN_CRS:
+                raise HTTPException(422, f"지원 좌표계: {', '.join(KOREAN_CRS)}")
+            conv = lambda ring: [[round(float(x), 3), round(float(y), 3)] for x, y in fr.crs_to_enu_xy([q[0] for q in ring], [q[1] for q in ring], crs)]  # noqa: E731
+            info = {"mode": "crs", "crs": crs}
+        elif pl.get("mode") == "points":
+            T = cad.similarity_from_points(pl["src"], pl["dst"], bool(pl.get("allow_scale")))
+            conv = lambda ring: cad.apply_similarity(ring, T)  # noqa: E731
+            info = {"mode": "points", **T, "src": pl["src"], "dst": pl["dst"]}
+        else:
+            raise HTTPException(422, "placement.mode는 crs 또는 points")
+        blds = []
+        for b in body.get("buildings") or []:
+            if b.get("include") is False:
+                continue
+            if b.get("floors") in (None, ""):
+                raise HTTPException(422, f"{b.get('id') or '이름 없는'} 동: 층수 입력 필요")
+            ring = conv(b["ring"])
+            blds.append({"id": str(b["id"]).strip(), "name": f"{str(b['id']).strip()}동", "floors": int(b["floors"]), "footprint": ring,
+                         **({"units_per_floor": int(b["units_per_floor"])} if b.get("units_per_floor") else {})})
+        if not blds:
+            raise HTTPException(422, "건물이 없음")
+        boundary = conv(body["boundary"]) if body.get("boundary") else None
+        src = {**(body.get("source") or {}), "placement": info}
+        sc = services.set_layout(s, p, code, {"buildings": blds, "source": src}, boundary, (body.get("source") or {}).get("filename"))
+        s.commit()
+    except services.ServiceError as exc:
+        _bad(exc)
+    except cad.CadError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except GeometryError as exc:
+        raise HTTPException(400, f"외곽선 오류: {exc}") from exc
+    return {"scenario": _scen_out(sc), "placement": info, "buildings": blds, "boundary": boundary}
+
+
+@app.delete("/api/projects/{pid}/scenarios/{code}/layout")
+def delete_layout(pid: str, code: str, s: Session = Depends(get_session)):
+    p = _project(s, pid)
+    try:
+        sc = services.set_layout(s, p, code, None, None, None)
+        s.commit()
+    except services.ServiceError as exc:
+        _bad(exc)
+    return {"scenario": _scen_out(sc)}
 
 
 @app.get("/api/legal/options")
@@ -750,14 +921,20 @@ def preview(pid: str, body: PreviewRequest, s: Session = Depends(get_session)):
     g, _, _ = _ground(s, p)
     sc = next((x for x in p.scenarios if x.code == "B"), None)
     tr = body.transforms if body.transforms is not None else (services.transforms_of(sc) if sc else {})
+    if sc is not None and services.layout_of(sc):
+        tr = services.transforms_of(sc)
+    sa = next((x for x in p.scenarios if x.code == "A"), None)
+    tr_a = services.transforms_of(sa) if sa else {}
     lim = {"dx": 60, "dy": 60, "rot_deg": 45, "floors_delta": 10}
     for bid, t in tr.items():
+        if bid == LAYOUT_KEY:
+            continue
         for k, v in t.items():
             if k in lim and abs(float(v)) > lim[k]:
                 raise HTTPException(422, f"{bid}.{k}={v} 허용범위 밖")
     fr = services.frame_of(p)
     try:
-        return quick_preview(services.site_dict(s, p), g, tr, _date.fromisoformat(body.date), fr.lat0, fr.lon0)
+        return quick_preview(services.site_dict(s, p), g, tr, _date.fromisoformat(body.date), fr.lat0, fr.lon0, tr_a)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 

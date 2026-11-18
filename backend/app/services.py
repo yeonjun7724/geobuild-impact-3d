@@ -19,7 +19,7 @@ from .db import (Building, Dataset, OpenSpacePolygon, Project, ProvenanceRecord,
 from .geo.enu import LocalFrame, PROJECTED_CRS
 from .geo.terrain import SYNTHETIC, USER_UPLOADED, DemSampler, GroundModel, build_ground, inspect_dem, write_synthetic_dem
 from .scene import demo
-from .scene.builder import stable_hash
+from .scene.builder import LAYOUT_KEY, stable_hash
 from .scene.geometry import GeometryError, validate_footprint
 
 
@@ -177,14 +177,58 @@ def demo_seed(s: Session, p: Project) -> Project:
     return p
 
 
+def layout_of(sc: Scenario) -> dict | None:
+    return ((sc.project.site_meta or {}).get("layouts") or {}).get(sc.code)
+
+
 def transforms_of(sc: Scenario) -> dict:
+    """Scenario input: per-building transforms of the baseline, or a whole drawn layout under LAYOUT_KEY."""
+    lay = layout_of(sc)
+    if lay:
+        return {LAYOUT_KEY: {"buildings": lay["buildings"], "source": lay.get("source")}}
     return {t.building_id: {"dx": t.dx, "dy": t.dy, "rot_deg": t.rot_deg, "floors_delta": t.floors_delta} for t in sc.transforms
             if (t.dx or t.dy or t.rot_deg or t.floors_delta)}
 
 
+def set_layout(s: Session, p: Project, code: str, layout: dict | None, boundary: list | None, boundary_source: str | None) -> Scenario:
+    sc = next((x for x in p.scenarios if x.code == code), None)
+    if sc is None:
+        raise ServiceError(f"시나리오 {code} 없음")
+    meta = dict(p.site_meta or {})
+    lays = dict(meta.get("layouts") or {})
+    if layout is None:
+        lays.pop(code, None)
+    else:
+        ids = [b["id"] for b in layout["buildings"]]
+        if len(set(ids)) != len(ids):
+            raise ServiceError("동 번호가 중복됨")
+        reserved = {b.building_id for b in p.buildings if b.kind == "CONTEXT"}
+        for b in layout["buildings"]:
+            if not b["id"] or len(b["id"]) > 32 or not all(ch.isalnum() or ch in "-_" for ch in b["id"]):
+                raise ServiceError(f"{b['id']!r}: 동 번호는 1~32자 영문/숫자/-/_")
+            if b["id"] in reserved:
+                raise ServiceError(f"{b['id']}: 주변 건물 ID와 겹침")
+            if not (1 <= int(b["floors"]) <= 80):
+                raise ServiceError(f"{b['id']}동: 층수 {b['floors']} 범위(1~80) 밖")
+            validate_footprint(Polygon(b["footprint"]))
+        lays[code] = layout
+    meta["layouts"] = lays
+    if boundary is not None:
+        bp = Polygon(boundary)
+        if not bp.is_valid or bp.area < 100:
+            raise ServiceError("대지경계선이 올바른 폴리곤이 아님")
+        meta["site_boundary"] = boundary
+        meta["site_boundary_source"] = boundary_source or "사용자 입력"
+    p.site_meta = meta
+    sc.revision += 1
+    s.flush()
+    refresh_hash(s, sc)
+    return sc
+
+
 def refresh_hash(s: Session, sc: Scenario) -> None:
     s.refresh(sc)
-    sc.content_hash = stable_hash({"code": sc.code, "transforms": transforms_of(sc)})
+    sc.content_hash = stable_hash({"code": sc.code, "transforms": transforms_of(sc), "site_boundary": (sc.project.site_meta or {}).get("site_boundary")})
 
 
 def site_dict(s: Session, p: Project) -> dict:
@@ -195,14 +239,17 @@ def site_dict(s: Session, p: Project) -> dict:
                        "data_class": b.data_class} for b in blds],
         "open_spaces": [{"id": o.space_id, "name": o.name, "kind": o.kind, "polygon": o.polygon, "data_class": o.data_class} for o in oss],
         "site_rect": p.site_rect,
-        "site_boundary": demo.demo_site_boundary(),
-        "site_boundary_class": "SYNTHETIC (가상 대지경계)",
+        "site_boundary": (p.site_meta or {}).get("site_boundary") or demo.demo_site_boundary(),
+        "site_boundary_class": ("USER_UPLOADED (" + (p.site_meta or {}).get("site_boundary_source", "도면") + ")")
+                               if (p.site_meta or {}).get("site_boundary") else "SYNTHETIC (가상 대지경계)",
     }
 
 
 def patch_building(s: Session, sc: Scenario, building_id: str, values: dict) -> Scenario:
     if sc.locked:
         raise ServiceError("기준안 A는 불변(잠금) - 변경안 B에서만 편집할 수 있음")
+    if layout_of(sc):
+        raise ServiceError("도면으로 입력한 안은 슬라이더로 편집할 수 없음 - 수정한 도면을 다시 올리거나 도면 입력을 해제하세요")
     b = s.scalars(select(Building).where(Building.project_id == sc.project_id, Building.building_id == building_id)).first()
     if b is None:
         raise ServiceError(f"건물 {building_id} 없음")

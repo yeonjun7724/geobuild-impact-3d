@@ -72,10 +72,32 @@ def _base_z_on_ground(poly: Polygon, ground: GroundModel) -> float:
     return float(np.nanmin(zs))
 
 
+LAYOUT_KEY = "__layout__"  # a scenario entered as its own drawing (DXF/PDF) instead of transforms of the baseline
+
+
+def changed_ids(A: list[ResolvedBuilding], B: list[ResolvedBuilding]) -> set[str]:
+    """Main buildings whose footprint or floor count differ between A and B (or exist in only one)."""
+    ia = {b.id: b for b in A if b.kind == "MAIN"}
+    ib = {b.id: b for b in B if b.kind == "MAIN"}
+    out = set(ia) ^ set(ib)
+    for k in set(ia) & set(ib):
+        a, b = ia[k], ib[k]
+        if a.floors != b.floors or a.footprint.symmetric_difference(b.footprint).area > 0.01:
+            out.add(k)
+    return out
+
+
 def resolve_scenario(site: dict, transforms: dict, ground: GroundModel) -> list[ResolvedBuilding]:
     pad = box(*ground.pad_rect)
     out = []
-    for b in site["buildings"]:
+    layout = (transforms or {}).get(LAYOUT_KEY)
+    if layout:
+        srcs = [{**b, "kind": "MAIN", "data_class": b.get("data_class", "USER_UPLOADED")} for b in layout["buildings"]] + \
+               [b for b in site["buildings"] if b["kind"] != "MAIN"]
+        transforms = {}
+    else:
+        srcs = site["buildings"]
+    for b in srcs:
         fp0 = validate_footprint(Polygon(b["footprint"]))
         if len(polygons_of(fp0)) != 1:
             raise ValueError(f"{b['id']}: 멀티파트 건물은 부분별 건물로 분리하여 입력하세요")

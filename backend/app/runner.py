@@ -23,7 +23,7 @@ from .config import ALGORITHM_VERSION, DATA_DIR, ENGINE_NAME, ENGINE_VERSION, co
 from .db import (AnalysisRun, ClearancePair, Floor, Project, RaySample, SessionLocal, ShadowGridCell, WindowReceiver, utcnow)
 from .geo.enu import LocalFrame
 from .geo.terrain import build_ground, DemSampler, file_sha256, horizon_check
-from .scene.builder import build_scene, building_mesh, footprint_geojson, resolve_scenario, snapshot_json, stable_hash
+from .scene.builder import LAYOUT_KEY, build_scene, building_mesh, changed_ids, footprint_geojson, resolve_scenario, snapshot_json, stable_hash
 
 DEPENDENCIES = ["numpy", "open3d", "pvlib", "shapely", "pyproj", "rasterio", "trimesh", "fastapi", "sqlalchemy", "rq", "playwright", "matplotlib"]
 
@@ -157,8 +157,7 @@ def _execute(run_id: str, snap: dict, params: dict, atype: str, prog: Progress) 
     tr_a, tr_b = snap["scenarios"]["A"]["transforms"], snap["scenarios"]["B"]["transforms"]
     A = resolve_scenario(site, tr_a, ground)
     B = resolve_scenario(site, tr_b, ground)
-    changed = {bid for bid, t in tr_b.items() if any(t.get(k) for k in ("dx", "dy", "rot_deg", "floors_delta"))} - \
-              {bid for bid, t in tr_a.items() if any(t.get(k) for k in ("dx", "dy", "rot_deg", "floors_delta"))}
+    changed = changed_ids(A, B)
     sA = build_scene(A, ground, ground_mesh=gmesh)
     sB = build_scene(B, ground, ground_mesh=gmesh)
     day = date.fromisoformat(params["date"])
@@ -384,9 +383,15 @@ def _execute(run_id: str, snap: dict, params: dict, atype: str, prog: Progress) 
             g2 = build_ground(DemSampler(tpath, fr), rect, region_half_m=rhalf, mesh_spacing_m=rmesh, pad_offset_m=off)
             sens.append({"case": f"가상 계획지반고 {off:+.0f} m", **_metrics_case(site, tr_a, tr_b, g2, g2.mesh(), sun, params, site["open_spaces"], rect, changed)})
         prog(93, "민감도", "변경 건물 +0.5 m 동쪽 미세이동")
-        tr_b2 = {k: dict(v) for k, v in tr_b.items()}
-        for bid in changed:
-            tr_b2[bid]["dx"] = float(tr_b2[bid].get("dx", 0)) + 0.5
+        if LAYOUT_KEY in tr_b:
+            lay = tr_b[LAYOUT_KEY]
+            tr_b2 = {LAYOUT_KEY: {**lay, "buildings": [{**bb, "footprint": [[x + 0.5, y] for x, y in bb["footprint"]]} if bb["id"] in changed else bb
+                                                       for bb in lay["buildings"]]}}
+        else:
+            tr_b2 = {k: dict(v) for k, v in tr_b.items()}
+            for bid in changed:
+                tr_b2.setdefault(bid, {"dx": 0.0, "dy": 0.0, "rot_deg": 0.0, "floors_delta": 0})
+                tr_b2[bid]["dx"] = float(tr_b2[bid].get("dx", 0)) + 0.5
         sens.append({"case": "변경 주동 +0.5 m 동쪽 미세이동", **_metrics_case(site, tr_a, tr_b2, ground, gmesh, sun, params, site["open_spaces"], rect, changed)})
         summary["sensitivity"] = {"cases": sens, "note": "가상 지반고 변화 시험은 실제 DEM 오차 통계가 아님. 각 사례는 동일 알고리즘으로 A/B 전체를 재계산."}
         write_csv(out / "sensitivity.csv", sens)

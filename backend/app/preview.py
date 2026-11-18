@@ -15,17 +15,17 @@ from .analysis import clearance as C
 from .analysis.shadow import compute_shadow, make_grid
 from .analysis.solar import instants, sample_window
 from .analysis.sunlight import compare_sunlight, compute_sunlight
-from .scene.builder import build_scene, resolve_scenario
+from .scene.builder import build_scene, changed_ids, resolve_scenario
 
 PREVIEW_RULE = "미리보기 근사: A 30분 간격 · B 4 m 격자 3개 시각(09·12·15시) · C 수평 최단거리 (확정 수치는 분석 실행)"
 
 
-def quick_preview(site: dict, ground, transforms_b: dict, day: date, lat: float, lon: float) -> dict:
+def quick_preview(site: dict, ground, transforms_b: dict, day: date, lat: float, lon: float, transforms_a: dict | None = None) -> dict:
     t0 = time.time()
     gmesh = ground.mesh()
-    A = resolve_scenario(site, {}, ground)
+    A = resolve_scenario(site, transforms_a or {}, ground)
     B = resolve_scenario(site, transforms_b, ground)
-    changed = {k for k, v in transforms_b.items() if any(v.get(x) for x in ("dx", "dy", "rot_deg", "floors_delta"))}
+    changed = changed_ids(A, B)
     sA, sB = build_scene(A, ground, ground_mesh=gmesh), build_scene(B, ground, ground_mesh=gmesh)
     sun = sample_window(day, "08:00", "16:00", 30, lat, lon)
     ca = compare_sunlight(compute_sunlight(sA, sun), compute_sunlight(sB, sun), changed, top_n=5)
