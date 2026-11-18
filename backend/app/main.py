@@ -437,7 +437,12 @@ def get_results(rid: str, s: Session = Depends(get_session)):
         insights = {"exec": _exec_summary(full), "recs": _recommendations(full)}
     except Exception as exc:  # noqa: BLE001 - insights are a convenience; never block results
         insights = {"exec": [], "recs": [], "error": str(exc)[:200]}
-    return {"run": _run_out(r), "summary": sm, "quality": r.quality, "files": _file_list(r), "insights": insights}
+    from .review import build_review
+    try:
+        review = build_review(full, Path(r.result_dir))
+    except Exception as exc:  # noqa: BLE001 - the verdict is derived; never block results
+        review = {"level": "amber", "verdict": "검토 판정을 만들지 못했습니다", "items": [], "changes": [], "error": str(exc)[:200]}
+    return {"run": _run_out(r), "summary": sm, "quality": r.quality, "files": _file_list(r), "insights": insights, "review": review}
 
 
 @app.get("/api/analyses/{rid}/scene")

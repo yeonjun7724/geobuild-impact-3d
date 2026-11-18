@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { AlertTriangle, BarChart3, ChevronDown, ChevronUp, ClipboardList, Download, FileText, Lightbulb, MousePointerClick, Ruler, Sun, Table2, TreePine } from "lucide-react";
+import { AlertTriangle, BarChart3, ChevronDown, ChevronUp, CircleCheck, CircleAlert, ClipboardList, Download, FileText, Gavel, Lightbulb, ListChecks, OctagonAlert, MousePointerClick, Ruler, Sun, Table2, TreePine } from "lucide-react";
 import { api, b64ToU8, downloadText, kstToUtcIso, toCsv, type SceneBuilding, type SunPathData } from "../api";
 import { Disclaimer, ErrorBox, Loading, PlanView, TopBar, divColor, useProject } from "../components/Chrome";
 import SyncedViewers, { type ViewMode } from "../components/SyncedViewers";
@@ -189,7 +189,7 @@ export default function ComparePage({ captureMode = false }: { captureMode?: boo
 
         <div className="absolute left-3 top-3 z-10 flex w-[268px] flex-col gap-3 overflow-y-auto" style={{ bottom: sideBottom }}>
           <Panel title="결과 레이어" icon={<BarChart3 size={14} />}>
-            {tab === "S" && <div className="text-[12px] leading-relaxed text-ink-2">계산된 핵심 결과를 오른쪽에 요약했습니다. 탭을 바꾸면 3D 위에 <b className="text-ink">외벽 일조 변화</b>, <b className="text-ink">시간별 음영 변화</b>, <b className="text-ink">최단 이격선</b>이 표시됩니다.</div>}
+            {tab === "S" && <div className="text-[12px] leading-relaxed text-ink-2">오른쪽 <b className="text-ink">검토 판정</b>이 이 변경안을 승인해도 되는지에 대한 답입니다. 각 항목의 <b className="text-ink">3D에서 보기</b>를 누르면 근거(외벽 일조 변화, 시간별 그늘, 동간 최단거리)가 3D 위에 표시됩니다. 주황색 동이 변경된 동입니다.</div>}
             {tab === "A" && <Legend title="Δ 총 직사일조 (분, B−A) · 외벽 타일" stops={["#e2373c", "#ececE8", "#2878e6"]} lo={`−${Math.round(recLim * 0.7)} 감소`} hi={`+${Math.round(recLim * 0.7)} 증가`}
               note="타일 1장 = 수광점 1개(외벽 대리지점, 층 × 외벽 구간). 클릭하면 시간별 0/1과 차폐 원인. 주동을 클릭하면 그 동만 표시." />}
             {tab === "B" && shadow && (
@@ -212,9 +212,13 @@ export default function ComparePage({ captureMode = false }: { captureMode?: boo
           <Panel title="2D 배치" icon={<MousePointerClick size={14} />} collapsible defaultOpen={false}>
             <PlanView a={scene.scenarios.A} b={scene.scenarios.B} changed={changed} selected={selBld} onSelect={(b) => setSelBld(b === selBld ? null : b)} size={230} />
           </Panel>
-          <div className="glass rise px-3 py-2 text-[10.5px] leading-snug text-muted">
-            QA {res.quality.n_pass}✓ / {res.quality.n_fail}✗ · {res.quality.verification_status}<br />지형 {sm.terrain.data_class} · 수직기준 {sm.terrain.vertical_datum_status} · run {runId}
-          </div>
+          <Panel title="계산 근거 · 데이터 출처" icon={<ListChecks size={14} />} collapsible defaultOpen={false}>
+            <div className="text-[11px] leading-relaxed text-muted">
+              분석일 {date} {sm.params.start}–{sm.params.end} KST · {sm.params.interval_min}분 간격<br />
+              자동 검증 {res.quality.n_pass}건 통과 / {res.quality.n_fail}건 실패 ({res.quality.verification_status})<br />
+              지형 {sm.terrain.data_class} · 수직기준 {sm.terrain.vertical_datum_status}<br />실행 ID {runId}
+            </div>
+          </Panel>
         </div>
 
         <div className="absolute right-3 top-16 z-10 flex w-[350px] flex-col gap-3 overflow-y-auto pl-0.5" style={{ bottom: sideBottom }}>
@@ -256,7 +260,8 @@ function SummaryPanel({ res, onGo }: { res: any; onGo: (t: Tab) => void }) {
   const lvl = (l: string) => (l.includes("재검토") ? "chip-bad" : l.includes("정밀") ? "chip-syn" : "chip-up");
   return (
     <>
-      <Panel title="핵심 결과 (계산값)" icon={<Lightbulb size={14} />}>
+      {res.review && <ReviewPanel rv={res.review} onGo={onGo} />}
+      <Panel title="핵심 수치 (계산값)" icon={<Lightbulb size={14} />} collapsible defaultOpen={false}>
         <div className="mb-3 grid grid-cols-2 gap-2" data-testid="summary-kpis">
           {sm.A && <Stat label="일조 감소 수광점" value={sm.A.n_decreased.toLocaleString()} tone="bad" sub={`최대 ${sm.A.delta_total_min_min}분`} />}
           {sm.A && <Stat label="평균 직사일조" value={`${sm.A.mean_total_min_b.toFixed(0)}분`} sub={`A ${sm.A.mean_total_min_a.toFixed(0)}분`} delta={Math.round((sm.A.mean_total_min_b - sm.A.mean_total_min_a) * 10) / 10} />}
@@ -276,7 +281,7 @@ function SummaryPanel({ res, onGo }: { res: any; onGo: (t: Tab) => void }) {
           })}
         </div>
       </Panel>
-      <Panel title="검토 우선순위 · 권고" icon={<ClipboardList size={14} />} collapsible>
+      <Panel title="세부 권고 · 추가 자료" icon={<ClipboardList size={14} />} collapsible defaultOpen={false}>
         <div className="space-y-1.5">
           {ins.recs.map((r: any, i: number) => (
             <div key={i} className="card-2 p-2.5">
@@ -290,6 +295,48 @@ function SummaryPanel({ res, onGo }: { res: any; onGo: (t: Tab) => void }) {
       </Panel>
       <Disclaimer />
     </>
+  );
+}
+
+const LV: Record<string, { cls: string; ring: string; icon: React.ReactNode; label: string }> = {
+  red: { cls: "text-bad", ring: "border-bad/50 bg-bad/[0.08]", icon: <OctagonAlert size={15} />, label: "보완 요청" },
+  amber: { cls: "text-warn", ring: "border-warn/50 bg-warn/[0.08]", icon: <CircleAlert size={15} />, label: "확인 필요" },
+  green: { cls: "text-good", ring: "border-good/40 bg-good/[0.06]", icon: <CircleCheck size={15} />, label: "특이사항 없음" },
+};
+
+function ReviewPanel({ rv, onGo }: { rv: any; onGo: (t: Tab) => void }) {
+  const top = LV[rv.level] ?? LV.amber;
+  return (
+    <Panel title="검토 판정 · 이 변경안, 승인해도 되나?" icon={<Gavel size={14} />}>
+      <div className={`mb-3 rounded-lg border p-3 ${top.ring}`} data-testid="review-verdict">
+        <div className={`flex items-center gap-1.5 text-[11px] font-bold ${top.cls}`}>{top.icon}{top.label}</div>
+        <div className="mt-1 text-[14px] font-bold leading-snug text-white">{rv.verdict.split(":").slice(1).join(":").trim() || rv.verdict}</div>
+      </div>
+      {rv.changes?.length > 0 && (
+        <div className="mb-3">
+          <div className="label mb-1">변경안(B)에서 바뀐 것</div>
+          <ul className="space-y-0.5 text-[12px] text-ink-2">{rv.changes.map((c: any) => <li key={c.building_id}>• {c.text}</li>)}</ul>
+        </div>
+      )}
+      <div className="label mb-1">검토 항목</div>
+      <div className="space-y-1.5" data-testid="review-items">
+        {rv.items.map((it: any) => {
+          const l = LV[it.level] ?? LV.amber;
+          return (
+            <button key={it.key} onClick={() => onGo(it.tab)} className="card-2 block w-full p-2.5 text-left transition hover:border-accent/50">
+              <div className="mb-0.5 flex items-center gap-1.5 text-[11.5px] font-bold">
+                <span className={l.cls}>{l.icon}</span><span className="text-ink">{it.title}</span><span className={`ml-1 ${l.cls}`}>{l.label}</span>
+                <span className="ml-auto text-[10.5px] font-medium text-muted">3D에서 보기 →</span>
+              </div>
+              <div className="text-[12.5px] font-semibold leading-snug text-white">{it.headline}</div>
+              {it.detail && <div className="mt-0.5 text-[11.5px] leading-relaxed text-ink-2">{it.detail}</div>}
+              {it.reference && <div className="mt-1 text-[10.5px] text-muted">판단선: {it.reference}</div>}
+            </button>
+          );
+        })}
+      </div>
+      {rv.caveat && <div className="mt-2 flex gap-1.5 text-[10.5px] leading-snug text-muted"><AlertTriangle size={12} className="mt-0.5 shrink-0 text-warn" />{rv.caveat}</div>}
+    </Panel>
   );
 }
 

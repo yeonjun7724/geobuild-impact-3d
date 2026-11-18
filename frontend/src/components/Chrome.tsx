@@ -32,9 +32,9 @@ export function TopBar({ project, right, latestRunId }: { project?: Project | nu
   const loc = useLocation();
   const path = loc.pathname;
   const steps = project ? [
-    { to: `/projects/${project.id}`, label: "설계 편집", icon: <PenTool size={13} />, active: path === `/projects/${project.id}`, enabled: true },
-    { to: `/projects/${project.id}/analysis`, label: "분석 실행", icon: <Play size={13} />, active: path.endsWith("/analysis"), enabled: true },
-    { to: latestRunId ? `/projects/${project.id}/compare/${latestRunId}` : "", label: "결과 비교", icon: <BarChart3 size={13} />, active: path.includes("/compare/"), enabled: !!latestRunId },
+    { to: `/projects/${project.id}`, label: "변경안 입력", icon: <PenTool size={13} />, active: path === `/projects/${project.id}`, enabled: true },
+    { to: `/projects/${project.id}/analysis`, label: "전후 계산", icon: <Play size={13} />, active: path.endsWith("/analysis"), enabled: true },
+    { to: latestRunId ? `/projects/${project.id}/compare/${latestRunId}` : "", label: "검토 판정", icon: <BarChart3 size={13} />, active: path.includes("/compare/"), enabled: !!latestRunId },
     { to: latestRunId ? `/reports/${latestRunId}` : "", label: "보고서", icon: <FileText size={13} />, active: path.startsWith("/reports/"), enabled: !!latestRunId },
   ] : [];
   const activeIdx = steps.findIndex((s) => s.active);
