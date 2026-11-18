@@ -72,7 +72,7 @@ def sun_reference(sm: dict, result_dir: Path) -> dict | None:
     meta = {}
     p = result_dir / "sunlight_receivers.csv"
     if p.exists():
-        with p.open(encoding="utf-8") as f:
+        with p.open(encoding="utf-8-sig") as f:
             meta = {r["receiver_id"]: r for r in csv.DictReader(f)}
     changed = set(sm.get("changed_buildings", []))
     groups: dict[str, dict] = {}
@@ -164,13 +164,50 @@ def _legal_item(legal: dict) -> dict:
             "detail": det + ". 기존 승인 경위(완화 심의 등)를 확인하세요.", "reference": ref, "tab": "L"}
 
 
+def _dwelling_item(u: dict) -> dict:
+    def where(gs, key):
+        parts = []
+        for g in gs:
+            hos = g["newly_below"]
+            if not hos:
+                continue
+            fl = sorted({int(h[:-2]) for h in hos})
+            parts.append(f"{g['building_id']}동 {len(hos)}세대 ({fl[0]}~{fl[-1]}층)" + ("" if g["changed_in_b"] else " · 변경 안 한 동"))
+        return "; ".join(parts[:5])
+    n_new = u["n_newly_below"] + u["n_only_b_below"]
+    if n_new:
+        det = where(u["by_building"], "newly_below")
+        other = u["n_newly_below_unchanged_buildings"]
+        tail = []
+        if u["n_only_b_below"]:
+            tail.append(f"증층 등으로 새로 생긴 세대 중 미달 {u['n_only_b_below']}세대 포함")
+        if other:
+            tail.append(f"변경하지 않은 동의 피해 {other}세대")
+        if u["n_still_below"]:
+            tail.append(f"기존안부터 미달 {u['n_still_below']}세대는 별도")
+        return {"key": "A", "level": "red", "title": "세대별 일조 (동·호)",
+                "headline": f"변경 후 일조 기준에 새로 미달하는 세대 {n_new}세대 (전체 {u['n_b']}세대 중)",
+                "detail": det + (". " + ", ".join(tail) + "." if tail else "."), "reference": u["rule"] + " · " + u["receiver"], "tab": "A"}
+    return {"key": "A", "level": "green" if not u["n_still_below"] else "amber", "title": "세대별 일조 (동·호)",
+            "headline": "일조 기준에 새로 미달하는 세대 없음",
+            "detail": f"변경안 {u['n_b']}세대 중 {u['n_meet_b']}세대 기준 충족" + (f", 기존안부터 미달 {u['n_still_below']}세대" if u["n_still_below"] else "") + ".",
+            "reference": u["rule"] + " · " + u["receiver"], "tab": "A"}
+
+
 def build_review(sm: dict, result_dir: Path, legal: dict | None = None) -> dict:
     items: list[dict] = []
     if legal is not None:
         items.append(_legal_item(legal))
     ref = None
+    if "U" in sm:
+        items.append(_dwelling_item(sm["U"]))
+        if legal and not legal.get("error"):
+            d_viol = [v for v in legal["compare"]["violations_b"] if v["check"] == "D"]
+            if d_viol and sm["U"]["all_b_continuous_2h"] and items and items[0]["key"] == "L":
+                items[0]["detail"] += (" 단, 변경안의 모든 세대가 동지 09~15시 연속 2시간 이상 일조를 확보하므로 "
+                                       "영 86조③2호 단서(동간 거리 완화) 적용 여부를 검토할 수 있습니다.")
     try:
-        ref = sun_reference(sm, result_dir)
+        ref = None if "U" in sm else sun_reference(sm, result_dir)
     except Exception as exc:  # noqa: BLE001 - the verdict must not break results; the error is shown instead
         items.append({"key": "A", "level": "amber", "title": "세대 일조", "headline": "일조 기준선 계산 실패", "detail": str(exc)[:160], "tab": "A"})
     if ref:

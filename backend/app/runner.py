@@ -18,6 +18,7 @@ from .analysis import clearance as C
 from .analysis import qa as QA
 from .analysis.shadow import compare_shadow, compute_shadow, make_grid, snapshot_states
 from .analysis.solar import ELEVATION_FIELD, SOLAR_METHOD, instants, sample_window
+from .analysis.dwellings import compare_dwellings, make_dwellings
 from .analysis.sunlight import compare_sunlight, compute_sunlight
 from .config import ALGORITHM_VERSION, DATA_DIR, ENGINE_NAME, ENGINE_VERSION, code_commit_hash
 from .db import (AnalysisRun, ClearancePair, Floor, Project, RaySample, SessionLocal, ShadowGridCell, WindowReceiver, utcnow)
@@ -235,6 +236,15 @@ def _execute(run_id: str, snap: dict, params: dict, atype: str, prog: Progress) 
         np.savez_compressed(out / "sunlight_timeseries.npz", ids_a=np.array(ra.receiver_ids), ids_b=np.array(rb.receiver_ids),
                             sun_a=ra.sun, sun_b=rb.sun, blk_a=ra.blocker, blk_b=rb.blocker, labels=np.array(ra.labels))
         summary["A"] = {k: v for k, v in ca.items() if k not in ("rows",)}
+        # per dwelling (동·호) on each main building's main window wall
+        mf = ((snap.get("site_meta") or {}).get("legal") or {}).get("main_facade") or {}
+        dA = [d for b in A if b.kind == "MAIN" for d in make_dwellings(b, mf.get(b.id))]
+        dB = [d for b in B if b.kind == "MAIN" for d in make_dwellings(b, mf.get(b.id))]
+        if dA and dB:
+            cu = compare_dwellings(compute_sunlight(sA, sun, receivers=dA), compute_sunlight(sB, sun, receivers=dB),
+                                   sun.times_local, sun.dt_min, changed)
+            write_csv(out / "dwellings.csv", cu["rows"])
+            summary["U"] = cu
         summary["timing_s"]["A"] = round(time.time() - t, 3)
         prog(38, "A. 직사일조 저장", "수광점 결과 DB 저장")
         with SessionLocal() as s:

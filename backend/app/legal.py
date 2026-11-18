@@ -359,7 +359,7 @@ def compare_layouts(a: dict, b: dict) -> dict:
 
 def check_run(sm: dict, site: dict, params: dict | None) -> dict:
     sc = sm["scenarios"]
-    pad_z = (sm.get("ground") or {}).get("pad_z", 0.0)
+    pad_z = float((sm.get("ground") or {}).get("pad_z_m", 0.0))
     boundary = site.get("site_boundary")
     a = check_layout(sc["A"]["buildings"], boundary, params, pad_z)
     b = check_layout(sc["B"]["buildings"], boundary, params, pad_z)

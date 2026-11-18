@@ -240,6 +240,7 @@ export default function ComparePage({ captureMode = false }: { captureMode?: boo
         <div className="absolute right-3 top-16 z-10 flex w-[350px] flex-col gap-3 overflow-y-auto pl-0.5" style={{ bottom: sideBottom }}>
           {tab === "S" && <SummaryPanel res={res} onGo={setTab} />}
           {tab === "L" && <LegalPanel res={res} projectId={id} onChanged={() => api.results(runId).then(setRes).catch((e) => setErr(e.message))} />}
+          {tab === "A" && sm.U && <DwellingPanel u={sm.U} onBuilding={(b) => setSelBld(b)} />}
           {tab === "A" && <ReceiverPanel s={recSeries} id={selRec} sm={sm} />}
           {tab === "B" && <ShadowPanel sm={sm} cell={cell} live={metric === "live" ? liveStats : null} />}
           {tab === "C" && clr && <ClearPanel c={clr} />}
@@ -374,7 +375,8 @@ function LegalPanel({ res, projectId, onChanged }: { res: any; projectId: string
   };
   const cmp = lg.compare;
   const fs = lg[side].findings as any[];
-  const groups = ["N", "W", "D"].map((c) => [c, fs.filter((f) => f.check === c)] as const).filter(([, l]) => l.length);
+  const groups = ["N", "W", "D"].map((c) => [c, fs.filter((f) => f.check === c)] as const).filter(([, l]) => l.length)
+    .sort((x, y) => y[1].filter((f) => !f.ok).length - x[1].filter((f) => !f.ok).length);
   const status = (f: any) => side === "B" ? cmp.violations_b.find((v: any) => v.check === f.check && v.subject === f.subject && v.basis === f.basis)?.status : undefined;
   return (
     <>
@@ -469,6 +471,68 @@ function FacadeEditor({ lg, P, save, labels }: { lg: any; P: any; save: (p: Reco
         ))}
       </div>
     </div>
+  );
+}
+
+const DW_STATUS: Record<string, { c: string; l: string }> = {
+  NEWLY_BELOW: { c: "#e5484d", l: "변경으로 미달" }, ONLY_B_BELOW: { c: "#ff8a8a", l: "새 세대·미달" }, STILL_BELOW: { c: "#6b7280", l: "기존부터 미달" },
+  IMPROVED: { c: "#408cff", l: "개선(충족)" }, OK: { c: "#2f7d5b", l: "충족" }, ONLY_B_OK: { c: "#3fbf8a", l: "새 세대·충족" }, ONLY_A: { c: "#1f2937", l: "B에 없음" },
+};
+
+function DwellingPanel({ u, onBuilding }: { u: any; onBuilding: (b: string) => void }) {
+  const worst = [...u.by_building].sort((a: any, b: any) => b.newly_below.length - a.newly_below.length)[0]?.building_id;
+  const [bid, setBid] = useState<string>(worst ?? u.by_building[0]?.building_id);
+  const [cell, setCell] = useState<any>(null);
+  const rows = u.rows.filter((r: any) => r.building_id === bid);
+  const floors = Math.max(0, ...rows.map((r: any) => r.floor));
+  const units = Math.max(0, ...rows.map((r: any) => r.unit));
+  const at = new Map(rows.map((r: any) => [`${r.floor}-${r.unit}`, r]));
+  const fmt = (m: number | null) => (m === null || m === undefined ? "-" : `${Math.floor(m / 60)}h${String(Math.round(m % 60)).padStart(2, "0")}`);
+  return (
+    <Panel title="세대별 일조표 (동지)" icon={<Sun size={14} />}>
+      <div className="mb-2 grid grid-cols-3 gap-1.5">
+        <Stat label="변경으로 미달" value={u.n_newly_below + u.n_only_b_below} tone={u.n_newly_below + u.n_only_b_below ? "bad" : "good"} />
+        <Stat label="기존부터 미달" value={u.n_still_below} tone={u.n_still_below ? "warn" : undefined} />
+        <Stat label="B 충족" value={`${u.n_meet_b}/${u.n_b}`} />
+      </div>
+      <div className="mb-2 flex flex-wrap gap-1">
+        {u.by_building.map((g: any) => (
+          <button key={g.building_id} onClick={() => { setBid(g.building_id); setCell(null); onBuilding(g.building_id); }}
+            className={`chip ${bid === g.building_id ? "!border-accent !text-white" : ""} ${g.newly_below.length ? "!text-[#ff9a9a]" : ""}`}>
+            {g.building_id}동{g.newly_below.length ? ` ·${g.newly_below.length}` : ""}
+          </button>))}
+      </div>
+      <div className="overflow-auto" style={{ maxHeight: 300 }} data-testid="dwelling-grid">
+        <table className="w-full border-separate" style={{ borderSpacing: 2 }}>
+          <tbody>
+            {Array.from({ length: floors }, (_, i) => floors - i).map((f) => (
+              <tr key={f}>
+                <td className="pr-1 text-right text-[10px] text-muted tnum">{f}F</td>
+                {Array.from({ length: units }, (_, k) => k + 1).map((k) => {
+                  const r: any = at.get(`${f}-${k}`);
+                  const st = r ? DW_STATUS[r.status] : null;
+                  return (
+                    <td key={k} title={r ? `${r.ho}호 · A 연속 ${fmt(r.cont_a)} / 총 ${fmt(r.total_a)} → B 연속 ${fmt(r.cont_b)} / 총 ${fmt(r.total_b)}` : ""}
+                      onClick={() => r && setCell(r)} className="h-[18px] cursor-pointer rounded-[3px] text-center text-[9.5px] font-semibold text-white/90"
+                      style={{ background: st?.c ?? "transparent", outline: cell?.id === r?.id ? "2px solid #fff" : undefined }}>
+                      {r ? r.ho : ""}
+                    </td>);
+                })}
+              </tr>))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-[10.5px] text-ink-2">
+        {Object.entries(DW_STATUS).filter(([k]) => rows.some((r: any) => r.status === k)).map(([k, v]) => <span key={k} className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: v.c }} />{v.l}</span>)}
+      </div>
+      {cell && (
+        <div className="card-2 mt-2 p-2 text-[12px]" data-testid="dwelling-detail">
+          <div className="font-bold text-white">{bid}동 {cell.ho}호 · {DW_STATUS[cell.status].l}</div>
+          <div className="text-ink-2">09~15시 연속: {fmt(cell.cont_a)} → <b className="text-ink">{fmt(cell.cont_b)}</b> · 08~16시 총: {fmt(cell.total_a)} → <b className="text-ink">{fmt(cell.total_b)}</b></div>
+          {cell.cause_b && <div className="text-[11px] text-muted">변경안에서 햇빛을 가장 많이 가리는 건물: {cell.cause_b}동</div>}
+        </div>)}
+      <div className="mt-2 text-[10.5px] leading-snug text-muted">기준: {u.rule}. 측정점: {u.receiver}. 모서리 세대의 측면 창은 반영하지 않습니다.</div>
+    </Panel>
   );
 }
 

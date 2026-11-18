@@ -42,6 +42,7 @@ class ResolvedBuilding:
     base_z: float
     transform: dict
     warnings: list[str] = field(default_factory=list)
+    units_per_floor: int | None = None
 
     @property
     def top_z(self) -> float:
@@ -121,7 +122,7 @@ def resolve_scenario(site: dict, transforms: dict, ground: GroundModel) -> list[
             ResolvedBuilding(
                 id=b["id"], name=b.get("name", b["id"]), kind=b["kind"], data_class=b.get("data_class", "SYNTHETIC"),
                 footprint_baseline=fp0, footprint=fp, floors=floors, height_m=building_height(floors),
-                base_z=base, transform=tr, warnings=warns,
+                base_z=base, transform=tr, warnings=warns, units_per_floor=b.get("units_per_floor"),
             )
         )
     # overlap check between buildings

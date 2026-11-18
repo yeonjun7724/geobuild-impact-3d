@@ -805,7 +805,7 @@ def clearance(rid: str, s: Session = Depends(get_session)):
     return sm["C"]
 
 
-RUN_FILES = ["analysis_summary.json", "quality_check.json", "sunlight_receivers.csv", "sunlight_per_floor.csv", "sunlight_per_building.csv",
+RUN_FILES = ["analysis_summary.json", "quality_check.json", "dwellings.csv", "sunlight_receivers.csv", "sunlight_per_floor.csv", "sunlight_per_building.csv",
              "shadow_grid_cells.csv", "shadow_grid_changed.geojson", "shadow_area_curve.csv", "clearance_pairs.csv",
              "clearance_facade_normals.csv", "clearance_boundary.csv", "buildings_A.geojson", "buildings_B.geojson", "sensitivity.csv",
              "scene_snapshot.json"]

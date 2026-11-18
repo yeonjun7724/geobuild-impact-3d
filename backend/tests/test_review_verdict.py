@@ -24,6 +24,7 @@ def _summary(times, **extra):
 def _write(tmp_path, sun_a, sun_b, ids):
     np.savez_compressed(tmp_path / "sunlight_timeseries.npz", ids_a=np.array(ids), ids_b=np.array(ids), sun_a=sun_a, sun_b=sun_b)
     with (tmp_path / "sunlight_receivers.csv").open("w", encoding="utf-8", newline="") as f:
+        f.write("\ufeff")
         w = csv.DictWriter(f, fieldnames=["receiver_id", "building_id", "floor", "facade", "main_cause_b"])
         w.writeheader()
         for rid in ids:
