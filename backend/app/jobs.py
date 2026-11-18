@@ -37,7 +37,8 @@ def redis_status() -> dict:
             return hb is not None and (now - hb.replace(tzinfo=timezone.utc)).total_seconds() < 480
 
         alive = [w for w in workers if RQ_QUEUE in w.queue_names() and fresh(w)]
-        return {"configured": True, "ok": True, "workers": len(alive), "host": host, "provider": "Railway" if host and "rlwy" in host else "custom",
+        return {"configured": True, "ok": True, "workers": len(alive), "host": host, "provider": "Railway" if host and ("rlwy" in host or host.endswith(".railway.internal")) else "custom",
+                "queue": RQ_QUEUE,
                 "version": r.info().get("redis_version")}
     except Exception as exc:  # noqa: BLE001
         return {"configured": True, "ok": False, "workers": 0, "host": host, "error": str(exc)[:200]}

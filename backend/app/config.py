@@ -40,7 +40,10 @@ ALGORITHM_VERSION = "abc-2026.11.2"  # bump whenever numerical rules change (par
 
 
 def code_commit_hash() -> str | None:
-    """Return the git HEAD commit if the repository is a git checkout, else None."""
+    """Return the git HEAD commit (checkout) or the commit the deployment was built from (Railway env), else None."""
+    env_sha = os.environ.get("RAILWAY_GIT_COMMIT_SHA") or os.environ.get("GIT_COMMIT_SHA")
+    if env_sha:
+        return env_sha
     head = REPO_DIR / ".git" / "HEAD"
     try:
         ref = head.read_text().strip()
