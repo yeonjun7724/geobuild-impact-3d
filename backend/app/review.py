@@ -141,8 +141,33 @@ def design_changes(sm: dict) -> list[dict]:
     return out
 
 
-def build_review(sm: dict, result_dir: Path) -> dict:
+def _legal_item(legal: dict) -> dict:
+    if not legal or legal.get("error"):
+        return {"key": "L", "level": "amber", "title": "법정 이격·일조 사선", "headline": "법정 검토를 계산하지 못했습니다",
+                "detail": (legal or {}).get("error", ""), "tab": "L"}
+    c, b = legal["compare"], legal["B"]
+    ref = f"{b['north_rule']} · 동간 계수 {b['coefficient_k']:g} ({b['coefficient_source']})"
+    viol = c["violations_b"]
+    if not viol:
+        n = len(b["findings"])
+        return {"key": "L", "level": "green", "title": "법정 이격·일조 사선", "headline": f"검토한 {n}개 항목 모두 기준 충족",
+                "detail": " · ".join(b["notes"][:1]) or "-", "reference": ref, "tab": "L"}
+    new = [v for v in viol if v["status"] == "NEW"]
+    top = (new or viol)[:3]
+    det = "; ".join(f"{v['subject']} {v['title']} {v['actual_m']:.1f} m < 기준 {v['required_m']:.1f} m ({v['clause']})" for v in top)
+    if new:
+        return {"key": "L", "level": "red", "title": "법정 이격·일조 사선",
+                "headline": f"변경안에서 새로 기준에 미달하는 항목 {len(new)}건" + (f" (기존안부터 미달 {c['n_existing']}건 별도)" if c["n_existing"] else ""),
+                "detail": det + ".", "reference": ref, "tab": "L"}
+    return {"key": "L", "level": "amber", "title": "법정 이격·일조 사선",
+            "headline": f"기존안부터 미달이던 항목 {len(viol)}건이 변경안에도 남아 있음",
+            "detail": det + ". 기존 승인 경위(완화 심의 등)를 확인하세요.", "reference": ref, "tab": "L"}
+
+
+def build_review(sm: dict, result_dir: Path, legal: dict | None = None) -> dict:
     items: list[dict] = []
+    if legal is not None:
+        items.append(_legal_item(legal))
     ref = None
     try:
         ref = sun_reference(sm, result_dir)
@@ -200,5 +225,5 @@ def build_review(sm: dict, result_dir: Path) -> dict:
         "green": "특이사항 없음: 검토한 항목에서 두드러진 악화가 없습니다",
     }[worst]
     return {"level": worst, "verdict": verdict, "items": items, "changes": design_changes(sm), "sun_reference": ref,
-            "caveat": "가상 단지·합성 지형 기반 PoC입니다. 기준선은 검토 우선순위용 참고선이며 법적 판정이 아닙니다. "
-                      "일조는 세대 창호가 아닌 외벽 대리지점 기준입니다."}
+            "caveat": "법정 항목은 입력된 배치·높이·대지경계로 계산한 1차 검토 결과이며, 옥탑·대지 높이차·돌출부 등은 반영하지 않습니다. "
+                      "일조·그늘·동간거리 변화 항목의 기준선은 검토 우선순위용 참고선입니다."}

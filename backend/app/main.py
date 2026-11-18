@@ -159,6 +159,46 @@ def demo_seed(pid: str, s: Session = Depends(get_session)):
     return _project_out(s, p)
 
 
+@app.get("/api/legal/options")
+def legal_options():
+    from . import legal
+    return {"presets": {k: {"label": v["label"], "source": v["source"], "k": v["k"]} for k, v in legal.PRESETS.items()},
+            "project_types": legal.PROJECT_TYPES, "zonings": legal.ZONINGS, "defaults": legal.DEFAULT_PARAMS,
+            "facade_roles": legal.FACADE_LABEL, "north_rule_change": legal.NEW_NORTH_RULE_FROM.isoformat()}
+
+
+@app.get("/api/projects/{pid}/legal-params")
+def get_legal_params(pid: str, s: Session = Depends(get_session)):
+    from . import legal
+    return legal.merged_params((_project(s, pid).site_meta or {}).get("legal"))
+
+
+@app.put("/api/projects/{pid}/legal-params")
+def put_legal_params(pid: str, body: dict, s: Session = Depends(get_session)):
+    from datetime import date as _date
+    from . import legal
+    p = _project(s, pid)
+    P = legal.merged_params({**((p.site_meta or {}).get("legal") or {}), **body})
+    if "k_override" in body:
+        P["k_override"] = body["k_override"]
+    try:
+        _date.fromisoformat(P["ref_date"])
+    except ValueError:
+        raise HTTPException(422, "기준일 형식 오류 (YYYY-MM-DD)")
+    if P["preset"] not in legal.PRESETS or P["project_type"] not in legal.PROJECT_TYPES or P["zoning"] not in legal.ZONINGS:
+        raise HTTPException(422, "알 수 없는 조례 프리셋/사업유형/용도지역")
+    if P["north_mode"] not in ("APPLY", "EXEMPT", "NOTICE"):
+        raise HTTPException(422, "north_mode는 APPLY|EXEMPT|NOTICE")
+    if P["k_override"] is not None and not (0 < float(P["k_override"]) <= 3):
+        raise HTTPException(422, "계수는 0~3 범위")
+    for bid, roles in (P["facades"] or {}).items():
+        if any(r not in legal.FACADE_LABEL for r in roles):
+            raise HTTPException(422, f"{bid}: 벽면 유형은 WINDOW|BLANK|SIDE")
+    p.site_meta = {**(p.site_meta or {}), "legal": P}
+    s.commit()
+    return P
+
+
 @app.get("/api/projects/{pid}/provenance")
 def provenance(pid: str, s: Session = Depends(get_session)):
     _project(s, pid)
@@ -437,12 +477,17 @@ def get_results(rid: str, s: Session = Depends(get_session)):
         insights = {"exec": _exec_summary(full), "recs": _recommendations(full)}
     except Exception as exc:  # noqa: BLE001 - insights are a convenience; never block results
         insights = {"exec": [], "recs": [], "error": str(exc)[:200]}
+    from .legal import check_run
     from .review import build_review
     try:
-        review = build_review(full, Path(r.result_dir))
+        legal = check_run(full, r.snapshot["site"], (_project(s, r.project_id).site_meta or {}).get("legal"))
+    except Exception as exc:  # noqa: BLE001
+        legal = {"error": str(exc)[:200]}
+    try:
+        review = build_review(full, Path(r.result_dir), legal)
     except Exception as exc:  # noqa: BLE001 - the verdict is derived; never block results
         review = {"level": "amber", "verdict": "검토 판정을 만들지 못했습니다", "items": [], "changes": [], "error": str(exc)[:200]}
-    return {"run": _run_out(r), "summary": sm, "quality": r.quality, "files": _file_list(r), "insights": insights, "review": review}
+    return {"run": _run_out(r), "summary": sm, "quality": r.quality, "files": _file_list(r), "insights": insights, "review": review, "legal": legal}
 
 
 @app.get("/api/analyses/{rid}/scene")

@@ -58,6 +58,9 @@ async function req<T>(method: string, url: string, body?: unknown, form?: FormDa
 }
 
 export const api = {
+  legalOptions: () => req<any>("GET", "/api/legal/options"),
+  legalParams: (pid: string) => req<any>("GET", `/api/projects/${pid}/legal-params`),
+  putLegalParams: (pid: string, body: Record<string, unknown>) => req<any>("PUT", `/api/projects/${pid}/legal-params`, body),
   health: () => req<any>("GET", "/api/health"),
   projects: () => req<Project[]>("GET", "/api/projects"),
   project: (id: string) => req<Project>("GET", `/api/projects/${id}`),

@@ -9,7 +9,7 @@ import type { Basemap, GridImage, Line as L3, PickResult, ReceiverPt, TerrainGri
 import { SunPath, TimelineDock, toMin } from "../components/Timeline";
 import { Empty, Legend, Panel, Segmented, Spinner, Stat } from "../ui";
 
-type Tab = "S" | "A" | "B" | "C";
+type Tab = "S" | "L" | "A" | "B" | "C";
 type GridMetric = "live" | "delta" | "shadeA" | "shadeB";
 const STATE_RGBA = ["rgba(255,247,214,0.0)", "rgba(70,78,96,0.55)", "rgba(240,72,72,0.92)", "rgba(64,140,255,0.92)"]; // sun→sun, shade→shade, new, relieved
 const tooltipStyle = { background: "#0f1a2c", border: "1px solid #2a3c5b", borderRadius: 8, fontSize: 11 };
@@ -129,8 +129,22 @@ export default function ComparePage({ captureMode = false }: { captureMode?: boo
     return { url: cv.toDataURL("image/png"), x0: g.x0 - h, y0: g.y0 - h, x1: g.x0 - h + g.nx * g.spacing, y1: g.y0 - h + g.ny * g.spacing, z: scene?.pad_z ?? 0 };
   }, [shadow, tab, metric, tl, tIdx, validIdx, scene?.pad_z]);
 
+  // ---- L: statutory checks (finding lines + site boundary edges)
+  const legalLines = useMemo(() => {
+    const lg = res?.legal;
+    if (!lg || lg.error || tab !== "L") return { a: undefined, b: undefined };
+    const z = scene?.pad_z ?? 0;
+    const bnd: L3[] = (lg.boundary ?? []).map((p: number[], i: number, arr: number[][]) => ({ a: p, b: arr[(i + 1) % arr.length], z, color: "#3ee39a", width: 2, label: `경계 ${i + 1}` }));
+    const mk = (side: "A" | "B"): L3[] => [...bnd, ...lg[side].findings.filter((f: any) => !f.ok || f.margin_m < 3).map((f: any) => ({
+      a: f.from, b: f.to, z, color: f.ok ? "#f6bf4f" : "#e5484d", width: f.ok ? 2 : 4,
+      label: `${f.check === "N" ? "정북" : f.check === "W" ? "채광" : "동간"} ${f.actual_m.toFixed(1)}m / 기준 ${f.required_m.toFixed(1)}m`,
+    }))];
+    return { a: mk("A"), b: mk("B") };
+  }, [res, tab, scene?.pad_z]);
+
   // ---- C: nearest-point lines
   const lines = useMemo(() => {
+    if (tab === "L") return legalLines;
     if (!clr || tab !== "C") return { a: undefined, b: undefined };
     const closest = [...clr.pairs].sort((x: any, y: any) => x.distance_b_m - y.distance_b_m)[0]?.pair_id;
     const sel = new Set([closest, ...clr.worsened_top.slice(0, 3).map((x: any) => x.pair_id)].filter(Boolean));
@@ -142,7 +156,7 @@ export default function ComparePage({ captureMode = false }: { captureMode?: boo
         label: `${r.pair_id.replace("|", "↔")} ${d.toFixed(1)}m${side === "B" && Math.abs(r.delta_m) > 1e-6 ? ` (${r.delta_m > 0 ? "+" : ""}${r.delta_m.toFixed(1)})` : ""}` };
     });
     return { a: mk("A"), b: mk("B") };
-  }, [clr, tab, scene?.pad_z]);
+  }, [clr, tab, scene?.pad_z, legalLines]);
 
   const onPick = (pk: PickResult) => {
     if (pk.type === "receiver") { setSelRec(pk.id); setTab("A"); }
@@ -165,6 +179,7 @@ export default function ComparePage({ captureMode = false }: { captureMode?: boo
   const curve = sm.B ? sm.B.curve.time_local.map((t: string, i: number) => ({ t, 신규음영: sm.B.curve.new_shade_area_m2[i], 음영해소: sm.B.curve.relieved_area_m2[i] })) : null;
   const tabs = [
     { value: "S" as Tab, label: <span className="flex items-center gap-1"><Lightbulb size={13} />요약</span> },
+    { value: "L" as Tab, label: <span className="flex items-center gap-1"><Gavel size={13} />법정</span>, disabled: !res.legal },
     { value: "A" as Tab, label: <span className="flex items-center gap-1"><Sun size={13} />A 일조</span>, disabled: !sm.A },
     { value: "B" as Tab, label: <span className="flex items-center gap-1"><TreePine size={13} />B 그림자</span>, disabled: !sm.B },
     { value: "C" as Tab, label: <span className="flex items-center gap-1"><Ruler size={13} />C 이격</span>, disabled: !sm.C },
@@ -207,6 +222,7 @@ export default function ComparePage({ captureMode = false }: { captureMode?: boo
                 </div>
               </>
             )}
+            {tab === "L" && <div className="text-[11.5px] leading-relaxed text-ink-2"><span className="text-bad">빨강</span> = 기준 미달, <span className="text-warn">노랑</span> = 여유 3 m 미만. 선은 측정한 최단 지점(정북·벽면 직각 방향)이고 라벨은 실제 거리 / 법정 기준입니다. <span className="text-good">초록</span> = 대지경계선(번호는 오른쪽 설정의 경계 번호).</div>}
             {tab === "C" && <div className="text-[11.5px] leading-relaxed text-ink-2">선 = 최단 수평 이격 연결선(양 끝 최근접점). <span className="text-bad">빨강</span> = B에서 감소. 라벨 = 거리(괄호 Δm). 법정 이격 적합성은 판정하지 않습니다.</div>}
           </Panel>
           <Panel title="2D 배치" icon={<MousePointerClick size={14} />} collapsible defaultOpen={false}>
@@ -223,6 +239,7 @@ export default function ComparePage({ captureMode = false }: { captureMode?: boo
 
         <div className="absolute right-3 top-16 z-10 flex w-[350px] flex-col gap-3 overflow-y-auto pl-0.5" style={{ bottom: sideBottom }}>
           {tab === "S" && <SummaryPanel res={res} onGo={setTab} />}
+          {tab === "L" && <LegalPanel res={res} projectId={id} onChanged={() => api.results(runId).then(setRes).catch((e) => setErr(e.message))} />}
           {tab === "A" && <ReceiverPanel s={recSeries} id={selRec} sm={sm} />}
           {tab === "B" && <ShadowPanel sm={sm} cell={cell} live={metric === "live" ? liveStats : null} />}
           {tab === "C" && clr && <ClearPanel c={clr} />}
@@ -337,6 +354,121 @@ function ReviewPanel({ rv, onGo }: { rv: any; onGo: (t: Tab) => void }) {
       </div>
       {rv.caveat && <div className="mt-2 flex gap-1.5 text-[10.5px] leading-snug text-muted"><AlertTriangle size={12} className="mt-0.5 shrink-0 text-warn" />{rv.caveat}</div>}
     </Panel>
+  );
+}
+
+const CHECK_LABEL: Record<string, string> = { N: "정북방향 일조", W: "채광창 → 대지경계", D: "동간 이격" };
+
+function LegalPanel({ res, projectId, onChanged }: { res: any; projectId: string; onChanged: () => void }) {
+  const lg = res.legal;
+  const [opt, setOpt] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [side, setSide] = useState<"B" | "A">("B");
+  useEffect(() => { api.legalOptions().then(setOpt).catch(() => {}); }, []);
+  if (!lg || lg.error) return <Panel title="법정 검토" icon={<Gavel size={14} />}><div className="text-[12px] text-bad">{lg?.error ?? "계산 결과 없음"}</div></Panel>;
+  const P = lg.B.params;
+  const save = async (patch: Record<string, unknown>) => {
+    setBusy(true); setMsg(null);
+    try { await api.putLegalParams(projectId, patch); onChanged(); } catch (e: any) { setMsg(e.message); } finally { setBusy(false); }
+  };
+  const cmp = lg.compare;
+  const fs = lg[side].findings as any[];
+  const groups = ["N", "W", "D"].map((c) => [c, fs.filter((f) => f.check === c)] as const).filter(([, l]) => l.length);
+  const status = (f: any) => side === "B" ? cmp.violations_b.find((v: any) => v.check === f.check && v.subject === f.subject && v.basis === f.basis)?.status : undefined;
+  return (
+    <>
+      <Panel title="법정 이격 · 일조 사선 검토" icon={<Gavel size={14} />}>
+        <div className="mb-2 grid grid-cols-3 gap-1.5">
+          <Stat label="변경안 신규 미달" value={cmp.n_new} tone={cmp.n_new ? "bad" : "good"} />
+          <Stat label="기존안부터 미달" value={cmp.n_existing} tone={cmp.n_existing ? "warn" : undefined} />
+          <Stat label="검토 항목" value={lg.B.findings.length} />
+        </div>
+        <Segmented ariaLabel="안 선택" size="sm" value={side} onChange={setSide} options={[{ value: "B", label: "변경안 B" }, { value: "A", label: "기존안 A" }]} />
+        <div className="mt-2 space-y-2" data-testid="legal-findings">
+          {groups.map(([c, list]) => (
+            <div key={c}>
+              <div className="label mb-1">{CHECK_LABEL[c]} · {list.filter((f) => !f.ok).length}건 미달 / {list.length}</div>
+              {[...list].sort((x, y) => x.margin_m - y.margin_m).slice(0, 8).map((f: any, i: number) => {
+                const st = status(f);
+                return (
+                  <div key={i} className={`card-2 mb-1 p-2 ${f.ok ? "" : "!border-bad/50"}`}>
+                    <div className="flex items-center gap-1.5 text-[12px] font-semibold">
+                      <span className={f.ok ? "text-good" : "text-bad"}>{f.ok ? "충족" : "미달"}</span>
+                      <span className="truncate text-ink">{f.subject}</span>
+                      {st && <span className={`chip ml-auto ${st === "NEW" ? "chip-bad" : "chip-syn"}`}>{st === "NEW" ? "변경으로 발생" : "기존부터"}</span>}
+                    </div>
+                    <div className="text-[11.5px] text-ink-2">실제 <b className="text-ink tnum">{f.actual_m.toFixed(2)} m</b> / 기준 {f.required_m.toFixed(2)} m <span className={f.ok ? "text-good" : "text-bad"}>({f.margin_m >= 0 ? "+" : ""}{f.margin_m.toFixed(2)})</span></div>
+                    <div className="text-[10.5px] text-muted">{f.clause} · {f.basis}</div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 space-y-0.5 text-[10.5px] leading-snug text-muted">
+          <div>정북: {lg.B.north_rule}</div>
+          <div>동간 계수 {lg.B.coefficient_k} · {lg.B.coefficient_source}</div>
+          {lg.B.notes.map((n: string) => <div key={n}>· {n}</div>)}
+        </div>
+      </Panel>
+      <Panel title="검토 조건 설정" icon={<ListChecks size={14} />} collapsible defaultOpen={false}>
+        {!opt ? <Spinner /> : (
+          <div className="space-y-2 text-[12px]" data-testid="legal-settings">
+            <label className="block"><span className="label">적용 기준일 (허가·변경 신청일)</span>
+              <input type="date" className="mt-0.5 w-full" defaultValue={P.ref_date} onBlur={(e) => e.target.value && e.target.value !== P.ref_date && save({ ref_date: e.target.value })} />
+              <span className="text-[10.5px] text-muted">{opt.north_rule_change}부터 정북 기준이 3단계(10 m / 17 m)로 바뀝니다.</span></label>
+            <label className="block"><span className="label">용도지역</span>
+              <select className="mt-0.5 w-full" value={P.zoning} onChange={(e) => save({ zoning: e.target.value })}>{Object.entries(opt.zonings).map(([k, v]) => <option key={k} value={k}>{v as string}</option>)}</select></label>
+            <label className="block"><span className="label">정북방향 일조 적용</span>
+              <select className="mt-0.5 w-full" value={P.north_mode} onChange={(e) => save({ north_mode: e.target.value })}>
+                <option value="APPLY">적용</option><option value="EXEMPT">적용 제외 (영 86조② 각 호)</option><option value="NOTICE">정남방향 고시 높이 적용 (법 61조③)</option></select></label>
+            <label className="block"><span className="label">조례</span>
+              <select className="mt-0.5 w-full" value={P.preset} onChange={(e) => save({ preset: e.target.value })}>{Object.entries(opt.presets).map(([k, v]: any) => <option key={k} value={k}>{v.label}</option>)}</select></label>
+            <label className="block"><span className="label">사업 유형</span>
+              <select className="mt-0.5 w-full" value={P.project_type} onChange={(e) => save({ project_type: e.target.value })}>{Object.entries(opt.project_types).map(([k, v]) => <option key={k} value={k}>{v as string}</option>)}</select></label>
+            <label className="block"><span className="label">동간 계수 직접 지정 (지구단위계획 등, 비우면 조례값)</span>
+              <input type="number" step="0.05" min="0" max="3" className="mt-0.5 w-full" defaultValue={P.k_override ?? ""} placeholder={`${lg.B.coefficient_k}`}
+                onBlur={(e) => save({ k_override: e.target.value === "" ? null : Number(e.target.value) })} /></label>
+            <div>
+              <span className="label">대지경계 밖 도로·공원·하천 폭 (m, 영 86조⑥ 중심선 적용)</span>
+              <div className="mt-1 grid grid-cols-4 gap-1">
+                {(lg.boundary ?? []).map((_: any, i: number) => (
+                  <label key={i} className="text-[10.5px] text-muted">경계 {i + 1}
+                    <input type="number" min="0" step="1" className="w-full" defaultValue={P.boundary_beyond_m?.[i] ?? ""} placeholder="0"
+                      onBlur={(e) => save({ boundary_beyond_m: { ...(P.boundary_beyond_m ?? {}), [i]: e.target.value === "" ? 0 : Number(e.target.value) } })} /></label>
+                ))}
+              </div>
+            </div>
+            <FacadeEditor lg={lg} P={P} save={save} labels={opt.facade_roles} />
+            {busy && <div className="flex items-center gap-2 text-muted"><Spinner />재계산 중…</div>}
+            {msg && <div className="text-bad">{msg}</div>}
+          </div>
+        )}
+      </Panel>
+    </>
+  );
+}
+
+function FacadeEditor({ lg, P, save, labels }: { lg: any; P: any; save: (p: Record<string, unknown>) => void; labels: Record<string, string> }) {
+  const [bid, setBid] = useState<string>(Object.keys(lg.B.facade_roles)[0] ?? "");
+  const fr = lg.B.facade_roles[bid];
+  if (!fr) return null;
+  const setRole = (i: number, r: string) => { const roles = [...fr.roles]; roles[i] = r; save({ facades: { ...(P.facades ?? {}), [bid]: roles } }); };
+  return (
+    <div>
+      <span className="label">벽면 유형 (채광창 벽면 / 창 없는 벽면 / 측벽)</span>
+      <select className="mt-0.5 w-full" value={bid} onChange={(e) => setBid(e.target.value)}>{Object.keys(lg.B.facade_roles).map((b) => <option key={b} value={b}>{b}동</option>)}</select>
+      <div className="mt-1 space-y-1">
+        {fr.roles.map((r: string, i: number) => (
+          <div key={i} className="flex items-center gap-1.5 text-[11px]">
+            <span className="w-12 text-muted">{i + 1}번 벽</span>
+            <select className="!h-7 flex-1 text-[11px]" value={r} onChange={(e) => setRole(i, e.target.value)}>{Object.entries(labels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+            <label className="flex items-center gap-1 text-muted"><input type="radio" name={`main-${bid}`} checked={fr.main === i} onChange={() => save({ main_facade: { ...(P.main_facade ?? {}), [bid]: i } })} />주개구부</label>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
