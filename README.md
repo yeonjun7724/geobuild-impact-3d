@@ -5,6 +5,19 @@
 > ⚠ **인천계양 A2블록 주변을 배경으로 한 가상 공동주택 설계변경 검증 PoC. 실제 LH 설계안, 인허가 검토, 공식 성능평가 결과가 아님.**
 > 기본 지형은 **합성(SYNTHETIC) 30 m DEM**이며 실제 인천계양 지형이 아닙니다. 실제 30 m DEM GeoTIFF는 [데이터] 탭에서 업로드할 수 있습니다.
 
+## 라이브 데모 (Railway)
+
+**https://app-production-4fadbb17.up.railway.app**
+
+| 예시 | 결과 비교 화면 | 기술보고서 |
+|---|---|---|
+| DEMO · 합성 30 m DEM | [/projects/f899e2de5dfd/compare/9887c3fa81a0](https://app-production-4fadbb17.up.railway.app/projects/f899e2de5dfd/compare/9887c3fa81a0) | [/reports/9887c3fa81a0](https://app-production-4fadbb17.up.railway.app/reports/9887c3fa81a0) |
+| SRTM 30 m DEM (계양산 포함 ±4.8 km) | [/projects/b8f984491b32/compare/6f71cdf84ebb](https://app-production-4fadbb17.up.railway.app/projects/b8f984491b32/compare/6f71cdf84ebb) | [/reports/6f71cdf84ebb](https://app-production-4fadbb17.up.railway.app/reports/6f71cdf84ebb) |
+
+API 문서: [/docs](https://app-production-4fadbb17.up.railway.app/docs) · 상태: [/api/health](https://app-production-4fadbb17.up.railway.app/api/health)
+
+배포 구성: 단일 Railway 서비스(루트 `Dockerfile`: React/Cesium 빌드 + FastAPI + RQ worker + Chromium) + 영구 볼륨 `/data`(SQLite·결과·보고서) + Railway Redis(사설망 `redis.railway.internal`, 큐 `geobuild-analysis-prod`). `main` 브랜치 push 시 자동 재배포. 로그인 없는 공개 PoC이므로 업로드는 300 MB로 제한됩니다.
+
 ## 무엇을 하는가
 
 | 단계 | 내용 |
