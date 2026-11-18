@@ -1,5 +1,7 @@
 #!/bin/sh
-# Print unresolved shared libraries of Open3D's native modules, then fail if any remain.
-missing=$(find /opt/venv/lib/python3.12/site-packages/open3d -name "*.so*" -exec ldd {} \; 2>/dev/null | grep "not found" | sort -u)
-if [ -n "$missing" ]; then echo "MISSING SHARED LIBS:"; echo "$missing"; exit 1; fi
-python -c "import open3d, rasterio, pvlib; print('open3d', open3d.__version__, 'import OK')"
+# Build-time guard: Open3D / rasterio / pvlib must import. On failure, list unresolved system libraries of the
+# Open3D CPU pybind module (bundled libOpen3D and optional ML plugins are excluded via LD_LIBRARY_PATH / filter).
+if python -c "import open3d, rasterio, pvlib; print('open3d', open3d.__version__, 'import OK')"; then exit 0; fi
+O3D=/opt/venv/lib/python3.12/site-packages/open3d
+LD_LIBRARY_PATH="$O3D:$O3D/cpu" ldd "$O3D"/cpu/pybind*.so | grep "not found" || true
+exit 1
