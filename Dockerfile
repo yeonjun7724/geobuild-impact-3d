@@ -12,7 +12,7 @@ FROM python:3.12-slim-bookworm
 ENV PYTHONUNBUFFERED=1 PYTHONIOENCODING=utf-8 UV_LINK_MODE=copy UV_PROJECT_ENVIRONMENT=/opt/venv \
     PATH=/opt/venv/bin:$PATH PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        fonts-noto-cjk libgl1 libgomp1 libglib2.0-0 ca-certificates \
+        fonts-noto-cjk libgl1 libgomp1 libglib2.0-0 libatomic1 ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=ghcr.io/astral-sh/uv:0.11.17 /uv /usr/local/bin/uv
 WORKDIR /app

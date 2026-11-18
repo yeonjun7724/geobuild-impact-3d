@@ -2,7 +2,7 @@
 FROM python:3.12-slim-bookworm
 ENV PYTHONUNBUFFERED=1 PYTHONIOENCODING=utf-8 UV_LINK_MODE=copy UV_PROJECT_ENVIRONMENT=/opt/venv PATH=/opt/venv/bin:$PATH
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        fonts-noto-cjk libgl1 libgomp1 libglib2.0-0 curl ca-certificates \
+        fonts-noto-cjk libgl1 libgomp1 libglib2.0-0 libatomic1 curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=ghcr.io/astral-sh/uv:0.11.17 /uv /usr/local/bin/uv
 WORKDIR /app
