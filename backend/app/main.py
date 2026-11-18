@@ -11,6 +11,7 @@ import numpy as np
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -79,9 +80,20 @@ def _scen_out(sc: Scenario) -> dict:
 
 def _project_out(s: Session, p: Project) -> dict:
     last = s.scalars(select(AnalysisRun).where(AnalysisRun.project_id == p.id).order_by(AnalysisRun.created_at.desc())).first()
+    if last is not None:
+        _reap_run(s, last)  # surface dead jobs on project cards too
+    thumb = None
+    rp = s.scalars(select(Report).join(AnalysisRun, Report.run_id == AnalysisRun.id)
+                   .where(AnalysisRun.project_id == p.id, Report.status == "SUCCEEDED").order_by(Report.created_at.desc())).first()
+    if rp and rp.files:
+        figs = rp.files.get("figures", [])
+        name = "f00_cesium_capture.png" if "f00_cesium_capture.png" in figs else ("f06_layout_ab.png" if "f06_layout_ab.png" in figs else None)
+        if name:
+            thumb = {"url": f"/api/reports/{rp.id}/assets/{name}", "run_id": rp.run_id, "report_id": rp.id}
     return ProjectOut(id=p.id, name=p.name, site_key=p.site_key, status=p.status, site_meta={**p.site_meta, "disclaimer": demo.DISCLAIMER},
                       frame=p.frame, site_rect=p.site_rect, created_at=p.created_at, data_badges=_badges(s, p),
                       scenarios=[_scen_out(sc) for sc in sorted(p.scenarios, key=lambda x: x.code)],
+                      thumbnail=thumb,
                       latest_run=None if last is None else {"id": last.id, "status": last.status, "analysis_type": last.analysis_type,
                                                             "created_at": last.created_at.isoformat()}).model_dump(mode="json")
 
@@ -419,7 +431,13 @@ def get_results(rid: str, s: Session = Depends(get_session)):
     for k in ("A",):
         if k in sm:
             sm[k] = {kk: vv for kk, vv in sm[k].items() if kk not in ("per_floor",)}
-    return {"run": _run_out(r), "summary": sm, "quality": r.quality, "files": _file_list(r)}
+    from .report.builder import _exec_summary, _recommendations
+    full = _summary(r)
+    try:
+        insights = {"exec": _exec_summary(full), "recs": _recommendations(full)}
+    except Exception as exc:  # noqa: BLE001 - insights are a convenience; never block results
+        insights = {"exec": [], "recs": [], "error": str(exc)[:200]}
+    return {"run": _run_out(r), "summary": sm, "quality": r.quality, "files": _file_list(r), "insights": insights}
 
 
 @app.get("/api/analyses/{rid}/scene")
@@ -665,6 +683,88 @@ def report_asset(report_id: str, name: str, s: Session = Depends(get_session)):
     if not f.exists() or "/" in name or "\\" in name:
         raise HTTPException(404)
     return FileResponse(f)
+
+
+# ------------------------------------------------------------------------------------------- interactive UX endpoints
+class PreviewRequest(BaseModel):
+    transforms: dict[str, dict] | None = None  # draft transforms for B (unsaved); default = saved B
+    date: str = "2026-12-22"
+
+
+@app.post("/api/projects/{pid}/preview")
+def preview(pid: str, body: PreviewRequest, s: Session = Depends(get_session)):
+    """Coarse live impact preview of a (possibly unsaved) variant B. Not persisted, not used in reports."""
+    from datetime import date as _date
+    from .preview import quick_preview
+    p = _project(s, pid)
+    g, _, _ = _ground(s, p)
+    sc = next((x for x in p.scenarios if x.code == "B"), None)
+    tr = body.transforms if body.transforms is not None else (services.transforms_of(sc) if sc else {})
+    lim = {"dx": 60, "dy": 60, "rot_deg": 45, "floors_delta": 10}
+    for bid, t in tr.items():
+        for k, v in t.items():
+            if k in lim and abs(float(v)) > lim[k]:
+                raise HTTPException(422, f"{bid}.{k}={v} 허용범위 밖")
+    fr = services.frame_of(p)
+    try:
+        return quick_preview(services.site_dict(s, p), g, tr, _date.fromisoformat(body.date), fr.lat0, fr.lon0)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.get("/api/projects/{pid}/terrain-grid")
+def terrain_grid(pid: str, s: Session = Depends(get_session)):
+    from .preview import grid_payload
+    g, _, _ = _ground(s, _project(s, pid))
+    return grid_payload(g)
+
+
+@app.get("/api/analyses/{rid}/terrain-grid")
+def run_terrain_grid(rid: str, s: Session = Depends(get_session)):
+    from .preview import grid_payload
+    from .geo.terrain import file_sha256
+    r = _run(s, rid)
+    t = r.snapshot["terrain"]
+    if file_sha256(Path(t["path"])) != t["sha256"]:
+        raise HTTPException(409, "스냅샷 지형 파일이 변경됨")
+    fr = services.frame_of(s.get(Project, r.project_id))
+    g = services.ground_for(t["path"], t["sha256"], fr.lat0, fr.lon0, tuple(r.snapshot["site"]["site_rect"]), 0.0,
+                            t.get("region_half_m", 1200.0), t.get("mesh_spacing_m", 10.0))
+    return grid_payload(g)
+
+
+@app.get("/api/sun")
+def sun_path(date: str = "2026-12-22", lat: float = 37.5559943, lon: float = 126.7545222):  # noqa: A002
+    """Sun azimuth/elevation (pvlib NREL SPA) for the day + solstice/equinox reference curves (KST)."""
+    from datetime import date as _date
+    from .analysis.solar import sample_window
+    d = _date.fromisoformat(date)
+    def curve(day):
+        sw = sample_window(day, "05:00", "20:00", 5, lat, lon)
+        return {"time": [t.strftime("%H:%M") for t in sw.times_local], "utc": sw.times_utc_iso,
+                "az": sw.azimuth_deg.round(3).tolist(), "el": sw.elevation_deg.round(3).tolist()}
+    main = curve(d)
+    el = np.array(main["el"])
+    up = np.nonzero(el > 0)[0]
+    return {"date": date, "timezone": "Asia/Seoul", "day": main,
+            "sunrise_approx": main["time"][up[0]] if len(up) else None, "sunset_approx": main["time"][up[-1]] if len(up) else None,
+            "noon_elevation_max": float(el.max()),
+            "reference": {k: curve(_date(d.year, m, dd)) for k, (m, dd) in {"동지": (12, 22), "춘·추분": (3, 20), "하지": (6, 21)}.items()}}
+
+
+@app.get("/api/analyses/{rid}/shadow/timeline")
+def shadow_timeline(rid: str, s: Session = Depends(get_session)):
+    """Per-interval shade bits of every valid cell for A and B (row-major order of valid cells) for time-lapse maps."""
+    r = _run(s, rid)
+    sm = _summary(r)
+    if "B" not in sm:
+        raise HTTPException(404, "이 실행에 B 분석 없음")
+    z = np.load(Path(r.result_dir) / "shadow_grid.npz")
+    a = np.packbits(z["shade_a"].T.astype(np.uint8), axis=1)  # (T, ceil(C/8))
+    b = np.packbits(z["shade_b"].T.astype(np.uint8), axis=1)
+    return {"n_cells": int(z["shade_a"].shape[0]), "times_local": [t[11:19] for t in sm["sun"]["times_local"]],
+            "times_utc": sm["sun"]["times_utc"], "bytes_per_time": int(a.shape[1]),
+            "shade_a_b64": _b64(a), "shade_b_b64": _b64(b), "bit_order": "numpy packbits big-endian, cells in row-major valid order"}
 
 
 # ------------------------------------------------------------------------------------------- single-service deploy

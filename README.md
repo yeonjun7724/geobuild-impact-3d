@@ -18,6 +18,20 @@ API 문서: [/docs](https://app-production-4fadbb17.up.railway.app/docs) · 상�
 
 배포 구성: 단일 Railway 서비스(루트 `Dockerfile`: React/Cesium 빌드 + FastAPI + RQ worker + Chromium) + 영구 볼륨 `/data`(SQLite·결과·보고서) + Railway Redis(사설망 `redis.railway.internal`, 큐 `geobuild-analysis-prod`). `main` 브랜치 push 시 자동 재배포. 로그인 없는 공개 PoC이므로 업로드는 300 MB로 제한됩니다.
 
+## 화면 (v0.2 UX)
+
+| 설계 편집 | 결과 비교 – B 그림자 타임랩스 |
+|---|---|
+| ![설계 편집](docs/screenshots/02_workspace_edit.png) | ![그림자 타임랩스](docs/screenshots/07_compare_B_timelapse.png) |
+| **A 일조 – 외벽 타일** | **C 이격 – 좌우 분할** |
+| ![외벽 일조 타일](docs/screenshots/06_compare_A_facade.png) | ![이격](docs/screenshots/08_compare_C_clearance.png) |
+
+- **3D 직접 편집**: 주동 드래그 = 이동, `Shift`+드래그 = 회전, `←↑↓→`(Shift ×5) · `Q/E` 회전 · `[ ]` 층수, `Ctrl+Z / Ctrl+Shift+Z` 되돌리기/다시하기. 편집 중 최근접 이격선이 실시간으로 갱신됩니다.
+- **실시간 영향 미리보기**: 놓는 즉시 서버가 같은 엔진으로 근사 계산(A 30분 · B 4 m 3시각 · C)한 일조 감소 수·평균 일조 Δ·신규 음영·최소 이격과 주동별 변화를 보여줍니다(확정 수치는 정밀 분석).
+- **분석 지형 위 배경지도**: 분석 지면 높이장을 Cesium 지형으로 사용하고 그 위에 OSM 지도(라이트·다크·컬러)를 입힙니다. 층 구분선·외곽선·동 라벨.
+- **타임라인 재생**: 08–16시 재생 시 3D 그림자(시각용)와 Open3D로 계산된 해당 구간의 신규 음영/음영 해소 격자가 함께 움직이고, 아래 차트가 면적 곡선을 따라갑니다. 태양 궤적도(동지·춘추분·하지 참조).
+- **결과 요약**: 계산 결과에서 결정론적으로 생성한 핵심 결과·검토 권고 카드(보고서와 같은 생성기).
+
 ## 무엇을 하는가
 
 | 단계 | 내용 |

@@ -13,3 +13,6 @@ frontend/dist/
 frontend/test-results/
 frontend/playwright-report/
 .railway/
+
+# local scratch scripts
+*.tmp.mjs

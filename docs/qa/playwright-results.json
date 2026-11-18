@@ -2,11 +2,11 @@
   "config": {
     "argv": [
       "C:\\Program Files\\nodejs\\node.exe",
-      "C:\\github\\lh-3d-poc_261118\\frontend\\node_modules\\@playwright\\test\\cli.js",
+      "c:\\github\\lh-3d-poc_261118\\frontend\\node_modules\\@playwright\\test\\cli.js",
       "test"
     ],
-    "configFile": "C:\\github\\lh-3d-poc_261118\\frontend\\playwright.config.ts",
-    "rootDir": "C:/github/lh-3d-poc_261118/frontend/e2e",
+    "configFile": "c:\\github\\lh-3d-poc_261118\\frontend\\playwright.config.ts",
+    "rootDir": "c:/github/lh-3d-poc_261118/frontend/e2e",
     "failOnFlakyTests": false,
     "forbidOnly": false,
     "fullyParallel": false,
@@ -22,7 +22,7 @@
     "preserveOutput": "always",
     "projects": [
       {
-        "outputDir": "C:/github/lh-3d-poc_261118/frontend/test-results",
+        "outputDir": "c:/github/lh-3d-poc_261118/frontend/test-results",
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
@@ -30,7 +30,7 @@
         },
         "id": "",
         "name": "",
-        "testDir": "C:/github/lh-3d-poc_261118/frontend/e2e",
+        "testDir": "c:/github/lh-3d-poc_261118/frontend/e2e",
         "testIgnore": [],
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
@@ -42,15 +42,15 @@
       {
         "grep": {},
         "grepInvert": null,
-        "outputDir": "C:\\github\\lh-3d-poc_261118\\frontend\\test-results",
+        "outputDir": "c:\\github\\lh-3d-poc_261118\\frontend\\test-results",
         "repeatEach": 1,
         "retries": 0,
         "metadata": {
           "actualWorkers": 1
         },
         "name": "",
-        "testDir": "C:\\github\\lh-3d-poc_261118\\frontend\\e2e",
-        "snapshotDir": "C:\\github\\lh-3d-poc_261118\\frontend\\e2e",
+        "testDir": "c:\\github\\lh-3d-poc_261118\\frontend\\e2e",
+        "snapshotDir": "c:\\github\\lh-3d-poc_261118\\frontend\\e2e",
         "testIgnore": [],
         "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
         "timeout": 900000,
@@ -109,7 +109,7 @@
       "specs": [
         {
           "title": "GeoBuild Impact 3D end-to-end",
-          "ok": true,
+          "ok": false,
           "tags": [],
           "tests": [
             {
@@ -122,25 +122,44 @@
                 {
                   "workerIndex": 0,
                   "parallelIndex": 0,
-                  "status": "passed",
-                  "duration": 228892,
-                  "errors": [],
-                  "stdout": [
+                  "status": "timedOut",
+                  "duration": 900223,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 900000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 900000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
                     {
-                      "text": "job backend line: 작업 백엔드: rq\n"
+                      "message": "\u001b[31mTest timeout of 900000ms exceeded.\u001b[39m"
                     },
                     {
-                      "text": "E2E OK project=d73a746fb6f6 run=b21e8d36dc9a pdf_bytes=1207113 zip_bytes=2997472\n"
+                      "location": {
+                        "file": "c:\\github\\lh-3d-poc_261118\\frontend\\e2e\\app.spec.ts",
+                        "column": 14,
+                        "line": 78
+                      },
+                      "message": "Error: page.screenshot: Test timeout of 900000ms exceeded.\nCall log:\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\n\n  76 |   await page.getByRole(\"button\", { name: \"분할\" }).click();\n  77 |   await page.waitForTimeout(7000);\n> 78 |   await page.screenshot({ path: `${SHOTS}/08_compare_C_clearance.png` });\n     |              ^\n  79 |\n  80 |   // 6. persistence across reload\n  81 |   await page.reload();\n    at c:\\github\\lh-3d-poc_261118\\frontend\\e2e\\app.spec.ts:78:14"
+                    }
+                  ],
+                  "stdout": [
+                    {
+                      "text": "job backend: 작업 백엔드 rq\n"
                     }
                   ],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T04:33:46.280Z",
+                  "startTime": "2026-11-18T06:26:24.626Z",
                   "annotations": [],
-                  "attachments": []
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "c:\\github\\lh-3d-poc_261118\\frontend\\test-results\\app-GeoBuild-Impact-3D-end-to-end\\error-context.md"
+                    }
+                  ]
                 }
               ],
-              "status": "expected"
+              "status": "unexpected"
             }
           ],
           "id": "c31ff144dc4fee3acd0a-7434b7a323d1a72d2983",
@@ -153,11 +172,11 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-11-18T04:33:45.446Z",
-    "duration": 230273.024,
-    "expected": 1,
+    "startTime": "2026-11-18T06:26:23.702Z",
+    "duration": 902307.06,
+    "expected": 0,
     "skipped": 0,
-    "unexpected": 0,
+    "unexpected": 1,
     "flaky": 0
   }
 }

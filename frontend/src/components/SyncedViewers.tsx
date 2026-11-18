@@ -1,27 +1,19 @@
 /* View modes: single A, single B, overlay (B solid + A ghost of changed blocks), split A|B with camera sync. */
 import { useEffect, useRef } from "react";
 import type { Viewer } from "cesium";
-import CesiumScene, { type BuildingLayer, type GridImage, type Line, type PickResult, type ReceiverPt, type Ring } from "./CesiumScene";
+import CesiumScene, { type Basemap, type BuildingLayer, type EditConfig, type GridImage, type Line, type PickResult, type ReceiverPt, type Ring, type TerrainGrid } from "./CesiumScene";
 import type { GroundMesh, SceneBuilding } from "../api";
 
 export type ViewMode = "A" | "B" | "OVERLAY" | "SPLIT";
-
-type Common = {
-  modelMatrix: number[];
-  padZ: number;
-  ground: GroundMesh | null;
-  timeUtc: string;
-  shadows: boolean;
-  imagery: boolean;
-  showContext: boolean;
-  selected?: string | null;
-  changed: Set<string>;
-  onPick?: (p: PickResult, side: "A" | "B") => void;
-  rings?: Ring[];
+type Side = { facade?: ReceiverPt[]; receivers?: ReceiverPt[]; grid?: GridImage | null; lines?: Line[] };
+type Props = {
+  mode: ViewMode; a: SceneBuilding[]; b: SceneBuilding[]; sideA?: Side; sideB?: Side;
+  modelMatrix: number[]; padZ: number; ground: GroundMesh | null; terrainGrid?: TerrainGrid | null; groundMode?: "terrain" | "mesh"; basemap?: Basemap;
+  timeUtc: string; shadows: boolean; showContext: boolean; floorLines?: boolean; labels?: boolean; selected?: string | null; changed: Set<string>;
+  onPick?: (p: PickResult, side: "A" | "B") => void; rings?: Ring[]; edit?: EditConfig | null; onReady?: () => void;
 };
-type Side = { receivers?: ReceiverPt[]; grid?: GridImage | null; lines?: Line[] };
 
-export default function SyncedViewers({ mode, a, b, sideA = {}, sideB = {}, onReady, ...c }: Common & { mode: ViewMode; a: SceneBuilding[]; b: SceneBuilding[]; sideA?: Side; sideB?: Side; onReady?: () => void }) {
+export default function SyncedViewers({ mode, a, b, sideA = {}, sideB = {}, onReady, edit, ...c }: Props) {
   const left = useRef<Viewer | null>(null);
   const right = useRef<Viewer | null>(null);
   const filt = (xs: SceneBuilding[]) => (c.showContext ? xs : xs.filter((x) => x.kind === "MAIN"));
@@ -46,31 +38,27 @@ export default function SyncedViewers({ mode, a, b, sideA = {}, sideB = {}, onRe
     if (which === "B") return [{ key: "B", buildings: filt(b), style: "solid", selected: c.selected, highlight: c.changed }];
     return [
       { key: "B", buildings: filt(b), style: "solid", selected: c.selected, highlight: c.changed },
-      { key: "A-ghost", buildings: a.filter((x) => c.changed.has(x.id)), style: "ghost", color: () => "#2a78d6" },
+      { key: "A-ghost", buildings: a.filter((x) => c.changed.has(x.id)), style: "ghost", color: () => "#4a94ff" },
     ];
   };
-  const scene = (which: "A" | "B" | "OVERLAY", side: Side, ref?: React.MutableRefObject<Viewer | null>, label?: string) => (
+  const scene = (which: "A" | "B" | "OVERLAY", side: Side, ref: React.MutableRefObject<Viewer | null>, label: string, tone: "a" | "b", editable: boolean) => (
     <div className="relative h-full w-full">
-      <CesiumScene
-        className="h-full w-full"
-        modelMatrix={c.modelMatrix} padZ={c.padZ} ground={c.ground} layers={layersFor(which)} timeUtc={c.timeUtc} shadows={c.shadows} imagery={c.imagery}
-        receivers={side.receivers} grid={side.grid} lines={side.lines} rings={c.rings}
-        onPick={(p) => c.onPick?.(p, which === "A" ? "A" : "B")}
-        onViewer={(v) => { if (ref) ref.current = v; }}
-        onReady={onReady}
-      />
-      {label && <div className={`pointer-events-none absolute left-2 top-2 rounded px-2 py-0.5 text-[12px] font-bold text-white ${label.startsWith("A") ? "bg-scen-a" : "bg-scen-b"}`}>{label}</div>}
+      <CesiumScene className="h-full w-full" modelMatrix={c.modelMatrix} padZ={c.padZ} ground={c.ground} terrainGrid={c.terrainGrid} groundMode={c.groundMode}
+        basemap={c.basemap} layers={layersFor(which)} timeUtc={c.timeUtc} shadows={c.shadows} floorLines={c.floorLines} labels={c.labels}
+        facade={side.facade} receivers={side.receivers} grid={side.grid} lines={side.lines} rings={c.rings} edit={editable ? edit : null}
+        onPick={(p) => c.onPick?.(p, which === "A" ? "A" : "B")} onViewer={(v) => { ref.current = v; }} onReady={onReady} />
+      <div className={`pointer-events-none absolute left-3 top-3 z-10 rounded-md px-2 py-1 text-[11.5px] font-bold text-white shadow ${tone === "a" ? "bg-scen-a" : "bg-scen-b"}`}>{label}</div>
     </div>
   );
   if (mode === "SPLIT") {
     return (
-      <div className="grid h-full w-full grid-cols-2 gap-[2px] bg-stone-300">
-        {scene("A", sideA, left, "A 기준안")}
-        {scene("B", sideB, right, "B 변경안 (카메라 동기화)")}
+      <div className="grid h-full w-full grid-cols-2 gap-[2px] bg-[#050a14]">
+        {scene("A", sideA, left, "A 기준안 (잠금)", "a", false)}
+        {scene("B", sideB, right, "B 변경안 · 카메라 동기화", "b", false)}
       </div>
     );
   }
-  if (mode === "A") return scene("A", sideA, left, "A 기준안");
-  if (mode === "B") return scene("B", sideB, left, "B 변경안");
-  return scene("OVERLAY", sideB, left, "B 변경안 + A 위치(파란 반투명)");
+  if (mode === "A") return scene("A", sideA, left, "A 기준안 (잠금)", "a", false);
+  if (mode === "B") return scene("B", sideB, left, "B 변경안", "b", true);
+  return scene("OVERLAY", sideB, left, "B 변경안 + A 위치(파란 반투명)", "b", true);
 }

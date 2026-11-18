@@ -34,6 +34,7 @@ class SunlightResult:
     dt_min: float
     offset_m: float
     rays_cast: int
+    patch_w: np.ndarray | None = None
 
     @property
     def total_min(self) -> np.ndarray:
@@ -83,6 +84,7 @@ def compute_sunlight(scene, sun: SunSeries, receivers=None) -> SunlightResult:
         dt_min=sun.dt_min,
         offset_m=eps,
         rays_cast=int(len(ri)),
+        patch_w=np.array([r.patch_w for r in recs], dtype=float),
     )
 
 
@@ -116,6 +118,7 @@ def compare_sunlight(a: SunlightResult, b: SunlightResult, changed_buildings: se
             "x_b": round(float(b.positions[j, 0]), 3), "y_b": round(float(b.positions[j, 1]), 3), "z_b": round(float(b.positions[j, 2]), 3),
             "nx_a": round(float(a.normals[i, 0]), 5), "ny_a": round(float(a.normals[i, 1]), 5),
             "nx_b": round(float(b.normals[j, 0]), 5), "ny_b": round(float(b.normals[j, 1]), 5),
+            "patch_w": round(float(b.patch_w[j]), 3) if b.patch_w is not None else 7.5,
             "sun_total_min_a": float(tot_a[k]), "sun_total_min_b": float(tot_b[k]), "delta_total_min": float(d_tot[k]),
             "max_cont_min_a": float(mc_a[k]), "max_cont_min_b": float(mc_b[k]), "delta_max_cont_min": float(d_mc[k]),
             "lost_intervals": int(lost.sum()), "gained_intervals": int((~a.sun[i] & b.sun[j]).sum()),

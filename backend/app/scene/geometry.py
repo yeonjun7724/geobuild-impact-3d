@@ -123,6 +123,7 @@ class Receiver:
     facade: str  # orientation label computed from the *baseline* geometry
     position: tuple[float, float, float]
     normal: tuple[float, float, float]
+    patch_w: float = RECEIVER_SPACING_M  # facade width represented by this receiver (edge length / count)
 
 
 def make_receivers(
@@ -168,6 +169,7 @@ def make_receivers(
                         facade=lab,
                         position=(float(p[0]), float(p[1]), float(z)),
                         normal=(float(nrm[0]), float(nrm[1]), 0.0),
+                        patch_w=float(L / cnt),
                     )
                 )
     return out

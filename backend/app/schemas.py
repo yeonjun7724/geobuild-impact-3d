@@ -26,6 +26,7 @@ class ProjectOut(BaseModel):
     data_badges: dict = {}
     scenarios: list[dict] = []
     latest_run: dict | None = None
+    thumbnail: dict | None = None
 
 
 class ScenarioCreate(BaseModel):

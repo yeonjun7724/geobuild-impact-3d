@@ -275,7 +275,14 @@ class GroundModel:
     qa: dict
 
     def mesh(self) -> tuple[np.ndarray, np.ndarray]:
-        """Triangulated height field. Triangles touching NoData vertices are dropped."""
+        """Triangulated height field (cached). Triangles touching NoData vertices are dropped."""
+        cached = getattr(self, "_mesh_cache", None)
+        if cached is not None:
+            return cached
+        self._mesh_cache = self._mesh()
+        return self._mesh_cache
+
+    def _mesh(self) -> tuple[np.ndarray, np.ndarray]:
         X, Y = np.meshgrid(self.xs, self.ys)
         verts = np.column_stack([X.ravel(), Y.ravel(), self.z.ravel()])
         ny, nx = self.z.shape
