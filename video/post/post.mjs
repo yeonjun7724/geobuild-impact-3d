@@ -50,7 +50,7 @@ const fadeOut = Math.max(0, total - 3.5).toFixed(2);
 ff(["-i", IN, "-stream_loop", "-1", "-i", bgm, "-filter_complex",
   [
     `[0:a]aformat=sample_rates=48000:channel_layouts=stereo,asplit=2[vo][key]`,
-    `[1:a]aformat=sample_rates=48000:channel_layouts=stereo,atrim=0:${total.toFixed(2)},volume=${bgmArg ? 0.32 : 0.55},afade=t=out:st=${fadeOut}:d=3.5[m]`,
+    `[1:a]aformat=sample_rates=48000:channel_layouts=stereo,atrim=0:${total.toFixed(2)},${bgmArg ? "acompressor=threshold=0.1:ratio=3:attack=20:release=400,volume=0.42" : "volume=0.55"},afade=t=out:st=${fadeOut}:d=3.5[m]`,
     `[m][key]sidechaincompress=threshold=0.03:ratio=8:attack=40:release=600:makeup=1[duck]`,
     `[vo][duck]amix=inputs=2:normalize=0:duration=first,loudnorm=I=-16:TP=-1.5:LRA=9[a]`,
   ].join(";"),
