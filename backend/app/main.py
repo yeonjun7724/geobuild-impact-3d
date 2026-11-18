@@ -675,7 +675,27 @@ def get_results(rid: str, s: Session = Depends(get_session)):
         review = build_review(full, Path(r.result_dir), legal)
     except Exception as exc:  # noqa: BLE001 - the verdict is derived; never block results
         review = {"level": "amber", "verdict": "검토 판정을 만들지 못했습니다", "items": [], "changes": [], "error": str(exc)[:200]}
-    return {"run": _run_out(r), "summary": sm, "quality": r.quality, "files": _file_list(r), "insights": insights, "review": review, "legal": legal}
+    from .review import load_decision
+    return {"run": _run_out(r), "summary": sm, "quality": r.quality, "files": _file_list(r), "insights": insights, "review": review, "legal": legal,
+            "decision": load_decision(Path(r.result_dir))}
+
+
+@app.put("/api/analyses/{rid}/decision")
+def put_decision(rid: str, body: dict, s: Session = Depends(get_session)):
+    """Record the reviewer's opinion on this run (append-only history next to the run's results)."""
+    from .legal import check_run
+    from .review import build_review, save_decision
+    r = _run(s, rid)
+    full = _summary(r)
+    try:
+        legal = check_run(full, r.snapshot["site"], (_project(s, r.project_id).site_meta or {}).get("legal"))
+        auto = build_review(full, Path(r.result_dir), legal)["level"]
+    except Exception:  # noqa: BLE001
+        auto = None
+    try:
+        return save_decision(Path(r.result_dir), body, auto)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @app.get("/api/analyses/{rid}/scene")

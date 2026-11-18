@@ -276,3 +276,39 @@ def build_review(sm: dict, result_dir: Path, legal: dict | None = None) -> dict:
     return {"level": worst, "verdict": verdict, "items": items, "changes": design_changes(sm), "sun_reference": ref,
             "caveat": "법정 항목은 입력된 배치·높이·대지경계로 계산한 1차 검토 결과이며, 옥탑·대지 높이차·돌출부 등은 반영하지 않습니다. "
                       "일조·그늘·동간거리 변화 항목의 기준선은 검토 우선순위용 참고선입니다."}
+
+
+# ------------------------------------------------------------------------------------------------ reviewer decision record
+DECISIONS = {"APPROVE": "승인", "CONDITIONAL": "조건부 승인", "SUPPLEMENT": "보완 요청", "REJECT": "반려"}
+
+
+def load_decision(result_dir: Path) -> dict:
+    import json
+    p = Path(result_dir) / "review_decision.json"
+    if not p.exists():
+        return {"latest": None, "history": []}
+    h = json.loads(p.read_text(encoding="utf-8")).get("history", [])
+    return {"latest": h[-1] if h else None, "history": h}
+
+
+def save_decision(result_dir: Path, body: dict, auto_level: str | None) -> dict:
+    """Append-only: every save is kept, the latest one is the reviewer's current opinion."""
+    import json
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    d = str(body.get("decision", ""))
+    if d not in DECISIONS:
+        raise ValueError(f"decision은 {', '.join(DECISIONS)} 중 하나")
+    reviewer = str(body.get("reviewer", "")).strip()
+    if not reviewer:
+        raise ValueError("검토자 이름을 입력하세요")
+    conds = [str(c).strip()[:300] for c in (body.get("conditions") or []) if str(c).strip()][:20]
+    if d == "CONDITIONAL" and not conds:
+        raise ValueError("조건부 승인은 조건을 하나 이상 적어야 합니다")
+    rec = {"decision": d, "decision_label": DECISIONS[d], "reviewer": reviewer[:60], "org": str(body.get("org", "")).strip()[:100],
+           "comment": str(body.get("comment", "")).strip()[:4000], "conditions": conds, "auto_level": auto_level,
+           "recorded_at": datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d %H:%M:%S KST")}
+    cur = load_decision(result_dir)
+    hist = cur["history"] + [rec]
+    (Path(result_dir) / "review_decision.json").write_text(json.dumps({"history": hist}, ensure_ascii=False, indent=1), encoding="utf-8")
+    return {"latest": rec, "history": hist}

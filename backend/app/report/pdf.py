@@ -15,6 +15,13 @@ font-family:'Noto Sans KR','Noto Sans CJK KR','Malgun Gothic',sans-serif;"><span
 _CHROMIUM_CACHE: dict = {}
 
 
+def _exe() -> dict:
+    """Optional override for hosts whose pre-installed Chromium differs from the pinned Playwright build."""
+    import os
+    path = os.environ.get("PLAYWRIGHT_CHROMIUM_PATH")
+    return {"executable_path": path} if path else {}
+
+
 def chromium_status() -> dict:
     import time as _t
     if _CHROMIUM_CACHE and _t.time() - _CHROMIUM_CACHE["at"] < 600:
@@ -29,7 +36,7 @@ def _chromium_status() -> dict:
         from playwright.sync_api import sync_playwright
 
         with sync_playwright() as p:
-            b = p.chromium.launch()
+            b = p.chromium.launch(**_exe())
             v = b.version
             b.close()
         return {"ok": True, "version": v}
@@ -41,7 +48,7 @@ def render_pdf(html_path: Path, pdf_path: Path, report_id: str, run_id: str, ver
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = p.chromium.launch(**_exe())
         page = browser.new_page()
         page.goto(html_path.resolve().as_uri(), wait_until="load")
         page.wait_for_timeout(300)
@@ -60,7 +67,7 @@ def try_capture_3d(url: str, png_path: Path, timeout_ms: int = 90000) -> dict:
         from playwright.sync_api import sync_playwright
 
         with sync_playwright() as p:
-            b = p.chromium.launch(args=["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"])
+            b = p.chromium.launch(args=["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"], **_exe())
             page = b.new_page(viewport={"width": 1400, "height": 860})
             page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
             page.wait_for_selector("[data-capture-ready='1']", timeout=timeout_ms)

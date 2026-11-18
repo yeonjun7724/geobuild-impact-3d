@@ -32,6 +32,7 @@ TEMPLATES = Path(__file__).parent / "templates"
 REPORT_TITLE = "GeoBuild Impact 3D 설계변경 영향 기술보고서"
 
 SECTIONS = [
+    ("s00", "설계변경 검토 의견서"),
     ("s01", "1. 문서관리"),
     ("s02", "2. 요약 (Executive Summary)"),
     ("s03", "3. 분석 배경과 목적"),
@@ -195,6 +196,7 @@ def _build(report_id: str) -> None:
         run_id, rdir, version = run.id, Path(run.result_dir), rp.version
         n_prev = s.query(Report).filter(Report.run_id == run_id, Report.status == "SUCCEEDED").count()
         proj_name, created = proj.name, rp.created_at
+        legal_params = (proj.site_meta or {}).get("legal")
         frame = frame_of(proj)
         run_logs = run.logs
         processing = run.processing_seconds
@@ -275,6 +277,15 @@ def _build(report_id: str) -> None:
     per_floor = _read_csv(rdir / "sunlight_per_floor.csv") if "A" in sm else []
     focus = {b["building_id"] for b in sm.get("A", {}).get("per_building", []) if b["n_decreased"] > 0 or b["changed_in_b"]}
     per_floor = [r for r in per_floor if r["building_id"] in focus]
+    from ..legal import check_run
+    from ..review import build_review, load_decision
+    try:
+        legal = check_run(sm, snap, legal_params)
+    except Exception as exc:  # noqa: BLE001
+        legal = {"error": str(exc)[:200]}
+    review = build_review(sm, rdir, legal)
+    decision = load_decision(rdir)
+    lay = {c: (sm["scenarios"][c].get("transforms") or {}).get("__layout__") for c in ("A", "B")}
     gen_local = datetime.now(ZoneInfo("Asia/Seoul"))
     meta = {
         "title": REPORT_TITLE, "report_id": report_id, "run_id": run_id, "version": version,
@@ -290,6 +301,8 @@ def _build(report_id: str) -> None:
         "lh_url": demo.LH_URL, "kasi_url": demo.KASI_URL, "capture": cap, "capture_b64": cap_b64, "fmt": _fmt,
         "th": {"sun": TH_SUN_LOSS_MIN, "os": TH_OPEN_SPACE_SHADE_MIN, "cl": TH_CLEARANCE_LOSS_M},
         "pdf_check_prev": None, "run_logs": run_logs, "files_expected": EXPORT_FILES,
+        "legal": legal, "review": review, "decision": decision, "layouts": lay,
+        "drawn": any(lay.values()) or bool(snap.get("context_attrs")),
     }
     env = Environment(loader=FileSystemLoader(TEMPLATES), autoescape=select_autoescape(["html", "j2"]))
     env.filters["n"] = lambda v, nd=1: _fmt(v, nd)

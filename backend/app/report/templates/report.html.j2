@@ -33,6 +33,14 @@ figcaption{font-size:8.2pt;color:var(--ink2);margin-top:1.2mm;text-align:left}
 .badge{display:inline-block;border:0.6pt solid currentColor;border-radius:2pt;padding:0 1.4mm;font-size:7.6pt;font-weight:700;margin-right:1mm}
 .b-syn{color:#a15c00}.b-real{color:#0b6b48}.b-der{color:#4a3aa7}.b-warn{color:#b03a2e}.b-up{color:#1c5cab}
 .note{background:var(--plane);border-left:2pt solid var(--axis);padding:2mm 3mm;margin:2mm 0 4mm;font-size:8.6pt;color:var(--ink2)}
+.verdict{border:1pt solid;border-radius:2mm;padding:3mm 4mm;margin:3mm 0 4mm}
+.verdict .vl{font-size:8.6pt;font-weight:700}.verdict .vt{font-size:13pt;font-weight:800;margin-top:1mm}
+.v-red{border-color:#c62828;background:#fdecec}.v-red .vl{color:#c62828}
+.v-amber{border-color:#b7791f;background:#fdf5e6}.v-amber .vl{color:#b7791f}
+.v-green{border-color:#2e7d32;background:#eaf6ec}.v-green .vl{color:#2e7d32}
+.lv-red{color:#c62828;font-weight:700}.lv-amber{color:#b7791f;font-weight:700}.lv-green{color:#2e7d32;font-weight:700}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+table.sign th{background:var(--plane)} table.sign td{vertical-align:top}
 .warn{background:var(--warnbg);border-left:2pt solid #eda100;padding:2mm 3mm;margin:2mm 0 4mm;font-size:8.6pt}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:2.5mm;margin:3mm 0 4mm}
 .kpi{border:0.6pt solid var(--line);border-radius:2pt;padding:2.4mm 3mm;break-inside:avoid}
@@ -70,7 +78,7 @@ ul.tight{margin:0 0 3mm;padding-left:5mm}ul.tight li{margin-bottom:1mm}
     <h1>{{ meta.title }}</h1>
     <p style="font-size:12pt;color:var(--ink2)">공동주택 설계변경 전후 (A) 직사일조시간 · (B) 그림자 변화 · (C) 건축물 이격거리 분석</p>
     <div style="height:8mm"></div>
-    <span class="stamp">가상 PoC · 실제 LH 설계안 아님</span>
+    {% if drawn %}<span class="stamp">업로드 도면·주변 건물 기반 1차 검토</span>{% else %}<span class="stamp">가상 PoC · 실제 LH 설계안 아님</span>{% endif %}
   </div>
   <dl>
     <dt>프로젝트</dt><dd>{{ meta.project_name }}</dd>
@@ -82,7 +90,7 @@ ul.tight{margin:0 0 3mm;padding-left:5mm}ul.tight li{margin-bottom:1mm}
     <dt>보고서 ID / 버전</dt><dd>{{ meta.report_id }} / v{{ meta.version }}</dd>
     <dt>발행 주체</dt><dd>{{ meta.publisher }}</dd>
   </dl>
-  <div class="warn"><b>중요 고지.</b> {{ disclaimer }} 지형은 {% if sm.terrain.data_class == 'SYNTHETIC' %}<b>합성(SYNTHETIC) 30 m DEM</b>으로 실제 지역 지형이 아니며{% else %}사용자 업로드 DEM이며{% endif %}, 계획지반은 가상 지반 가정입니다. 법규 적합/위반 판정을 하지 않습니다.</div>
+  <div class="warn"><b>중요 고지.</b> {{ disclaimer }} 지형은 {% if sm.terrain.data_class == 'SYNTHETIC' %}<b>합성(SYNTHETIC) 30 m DEM</b>으로 실제 지역 지형이 아니며{% else %}사용자 업로드 DEM이며{% endif %}, 계획지반은 가상 지반 가정입니다. 법정 이격·일조 사선은 입력 형상으로 계산한 1차 검토이며 인허가 판단을 대신하지 않습니다.</div>
 </section>
 
 <!-- ============================== 목차 ============================== -->
@@ -92,6 +100,63 @@ ul.tight{margin:0 0 3mm;padding-left:5mm}ul.tight li{margin-bottom:1mm}
   {% for sid, title in sections %}<li><span>{{ title }}</span><span>{{ toc_pages.get(title, '…') }}</span></li>{% endfor %}
   </ol>
   <p class="small" style="margin-top:6mm">쪽번호는 1차 렌더링된 PDF에서 각 장 제목의 실제 위치를 추출하여 기입했습니다. 표·그림 번호는 본문 순서대로 부여됩니다. 요구 17개 항목(표지 포함)과 장의 대응은 16장 부록 표에 있습니다.</p>
+</section>
+
+<!-- ============================== 검토 의견서 ============================== -->
+{% set LV = {'red': '보완 요청', 'amber': '확인 필요', 'green': '특이사항 없음'} %}
+<section class="chapter" id="s00">
+<h2>설계변경 검토 의견서</h2>
+<table>{{ tcap("검토 대상과 적용 기준") }}
+<tbody>
+<tr><th style="width:38mm">대상</th><td>{{ meta.project_name }}</td></tr>
+<tr><th>기존안 A</th><td>{% if layouts.A %}도면 입력: {{ layouts.A.source.filename }} ({{ layouts.A.buildings|length }}개 동){% else %}{{ sm.scenarios.A.name }} (기본 배치){% endif %}</td></tr>
+<tr><th>변경안 B</th><td>{% if layouts.B %}도면 입력: {{ layouts.B.source.filename }} ({{ layouts.B.buildings|length }}개 동){% else %}{{ sm.scenarios.B.name }} (rev {{ sm.scenarios.B.revision }}){% endif %}</td></tr>
+{% if not legal.error %}
+<tr><th>법정 기준</th><td>{{ legal.B.north_rule }}<br>동간 이격 계수 {{ legal.B.coefficient_k }} · {{ legal.B.coefficient_source }} · 기준일 {{ legal.B.params.ref_date }}</td></tr>
+{% endif %}
+<tr><th>일조 기준</th><td>{% if sm.U %}{{ sm.U.rule }} · {{ sm.U.receiver }}{% else %}외벽 대리지점 기준{% endif %} · 분석일 {{ sm.params.date }}</td></tr>
+</tbody></table>
+
+<div class="verdict v-{{ review.level }}"><div class="vl">자동 검토 결과 · {{ LV[review.level] }}</div><div class="vt">{{ review.verdict.split(':')[1:]|join(':')|trim or review.verdict }}</div></div>
+
+{% if review.changes %}<h3>변경안에서 바뀐 것</h3><ul class="tight">{% for c in review.changes %}<li>{{ c.text }}</li>{% endfor %}</ul>{% endif %}
+
+<table>{{ tcap("항목별 검토 결과") }}
+<thead><tr><th style="width:30mm">항목</th><th style="width:20mm">결과</th><th>내용</th></tr></thead>
+<tbody>{% for it in review['items'] %}<tr><td>{{ it.title }}</td><td class="lv-{{ it.level }}">{{ LV[it.level] }}</td>
+<td><b>{{ it.headline }}</b><br>{{ it.detail }}{% if it.reference %}<br><span class="small">판단선: {{ it.reference }}</span>{% endif %}</td></tr>{% endfor %}</tbody></table>
+
+{% if not legal.error and legal.compare.violations_b %}
+<table>{{ tcap("법정 이격·일조 사선 미달 항목 (변경안 B)") }}
+<thead><tr><th>구분</th><th>대상</th><th class="num">실제 m</th><th class="num">기준 m</th><th>근거</th><th>발생</th></tr></thead>
+<tbody>{% for v in legal.compare.violations_b %}<tr><td>{{ v.title }}</td><td>{{ v.subject }}</td><td class="num">{{ v.actual_m|n(2) }}</td><td class="num">{{ v.required_m|n(2) }}</td>
+<td class="small">{{ v.clause }} · {{ v.basis }}</td><td>{{ '변경으로 발생' if v.status == 'NEW' else '기존안부터' }}</td></tr>{% endfor %}</tbody></table>
+{% endif %}
+
+{% if sm.U and (sm.U.n_newly_below or sm.U.n_only_b_below) %}
+<table>{{ tcap("변경으로 일조 기준에 미달하게 되는 세대") }}
+<thead><tr><th style="width:18mm">동</th><th style="width:16mm" class="num">세대수</th><th>호</th></tr></thead>
+<tbody>{% for g in sm.U.by_building if g.newly_below %}<tr><td>{{ g.building_id }}동</td><td class="num">{{ g.newly_below|length }}</td><td>{{ g.newly_below|join(', ') }}</td></tr>{% endfor %}</tbody></table>
+{% endif %}
+
+{% if sm.NB and sm.NB.n_points_newly_below %}
+<table>{{ tcap("주변 기존 건물 일조 영향") }}
+<thead><tr><th>건물</th><th>용도</th><th class="num">새로 미달 지점</th><th>층</th><th>원인</th></tr></thead>
+<tbody>{% for g in sm.NB.buildings if g.n_newly_below %}<tr><td>{{ g.name }}</td><td>{{ g.use or '미상' }}</td><td class="num">{{ g.n_newly_below }}</td>
+<td>{{ g.floors[0] }}~{{ g.floors[1] }}층 {{ g.facades|join('/') }}면</td><td>{{ g.causes.keys()|list|first or '-' }}동</td></tr>{% endfor %}</tbody></table>
+{% endif %}
+
+<h3>검토자 의견</h3>
+{% set d = decision.latest %}
+<table class="sign"><tbody>
+<tr><th style="width:30mm">최종 의견</th><td>{% if d %}<b>{{ d.decision_label }}</b>{% else %}□ 승인 &nbsp; □ 조건부 승인 &nbsp; □ 보완 요청 &nbsp; □ 반려{% endif %}</td></tr>
+<tr><th>조건</th><td>{% if d and d.conditions %}<ol class="tight">{% for c in d.conditions %}<li>{{ c }}</li>{% endfor %}</ol>{% else %}<div style="height:12mm"></div>{% endif %}</td></tr>
+<tr><th>의견</th><td>{% if d and d.comment %}{{ d.comment }}{% else %}<div style="height:22mm"></div>{% endif %}</td></tr>
+<tr><th>검토자</th><td>{% if d %}{{ d.org }} {{ d.reviewer }} · {{ d.recorded_at }}{% endif %}</td></tr>
+</tbody></table>
+<table class="sign"><thead><tr><th>검토</th><th>확인</th><th>승인</th></tr></thead><tbody><tr><td style="height:18mm"></td><td></td><td></td></tr></tbody></table>
+{% if decision.history|length > 1 %}<p class="small">의견 기록 {{ decision.history|length }}건 중 최신. 이전 기록: {% for h in decision.history[:-1] %}{{ h.recorded_at }} {{ h.reviewer }} {{ h.decision_label }}{% if not loop.last %}; {% endif %}{% endfor %}</p>{% endif %}
+<div class="note">{{ review.caveat }} 자동 검토 결과는 검토자의 판단을 돕는 1차 계산이며, 최종 의견은 검토자가 기재합니다.</div>
 </section>
 
 <!-- ============================== 1 문서관리 ============================== -->

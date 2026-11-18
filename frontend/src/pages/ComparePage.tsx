@@ -239,6 +239,7 @@ export default function ComparePage({ captureMode = false }: { captureMode?: boo
 
         <div className="absolute right-3 top-16 z-10 flex w-[350px] flex-col gap-3 overflow-y-auto pl-0.5" style={{ bottom: sideBottom }}>
           {tab === "S" && <SummaryPanel res={res} onGo={setTab} />}
+          {tab === "S" && <DecisionPanel runId={runId} res={res} onSaved={(d) => setRes({ ...res, decision: d })} onReport={() => nav(`/reports/${runId}`)} />}
           {tab === "L" && <LegalPanel res={res} projectId={id} onChanged={() => api.results(runId).then(setRes).catch((e) => setErr(e.message))} />}
           {tab === "A" && sm.U && <DwellingPanel u={sm.U} onBuilding={(b) => setSelBld(b)} />}
           {tab === "A" && sm.NB && <NeighborPanel nb={sm.NB} />}
@@ -550,6 +551,50 @@ function NeighborPanel({ nb }: { nb: any }) {
           </div>))}
       </div>
       <div className="mt-1.5 text-[10.5px] text-muted">{nb.receiver}. 세대 위치를 알면 해당 세대 창 기준으로 다시 확인하세요.</div>
+    </Panel>
+  );
+}
+
+const DECISIONS: [string, string][] = [["APPROVE", "승인"], ["CONDITIONAL", "조건부 승인"], ["SUPPLEMENT", "보완 요청"], ["REJECT", "반려"]];
+
+function DecisionPanel({ runId, res, onSaved, onReport }: { runId: string; res: any; onSaved: (d: any) => void; onReport: () => void }) {
+  const last = res.decision?.latest;
+  const suggest = res.review?.level === "red" ? "SUPPLEMENT" : res.review?.level === "amber" ? "CONDITIONAL" : "APPROVE";
+  const [decision, setDecision] = useState<string>(last?.decision ?? suggest);
+  const [reviewer, setReviewer] = useState<string>(last?.reviewer ?? "");
+  const [org, setOrg] = useState<string>(last?.org ?? "");
+  const [conds, setConds] = useState<string>((last?.conditions ?? []).join("\n"));
+  const [comment, setComment] = useState<string>(last?.comment ?? "");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true); setMsg(null);
+    try {
+      const r = await fetch(`/api/analyses/${runId}/decision`, { method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision, reviewer, org, comment, conditions: conds.split("\n").map((x) => x.trim()).filter(Boolean) }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail));
+      onSaved(j); setMsg("기록했습니다. 보고서를 다시 생성하면 의견서에 반영됩니다.");
+    } catch (e: any) { setMsg(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <Panel title="검토자 의견 기록" icon={<ClipboardList size={14} />} collapsible defaultOpen={!last}>
+      {last && <div className="mb-2 text-[11.5px] text-ink-2">최근 기록: <b className="text-ink">{last.decision_label}</b> · {last.org} {last.reviewer} · {last.recorded_at}{res.decision.history.length > 1 ? ` (총 ${res.decision.history.length}건)` : ""}</div>}
+      <div className="space-y-2 text-[12px]" data-testid="decision-form">
+        <Segmented ariaLabel="최종 의견" size="sm" value={decision} onChange={setDecision} options={DECISIONS.map(([v, l]) => ({ value: v, label: l }))} />
+        <div className="grid grid-cols-2 gap-1.5">
+          <input placeholder="검토자" value={reviewer} onChange={(e) => setReviewer(e.target.value)} />
+          <input placeholder="소속 (예: 인천지역본부)" value={org} onChange={(e) => setOrg(e.target.value)} />
+        </div>
+        <textarea className="w-full" rows={3} placeholder={"조건 (한 줄에 하나)" + (decision === "CONDITIONAL" ? " · 조건부 승인은 필수" : "")} value={conds} onChange={(e) => setConds(e.target.value)} />
+        <textarea className="w-full" rows={3} placeholder="검토 의견" value={comment} onChange={(e) => setComment(e.target.value)} />
+        <div className="flex gap-1.5">
+          <button className="btn btn-primary flex-1" onClick={save} disabled={busy || !reviewer.trim()}>의견 기록</button>
+          <button className="btn flex-1" onClick={onReport}><FileText size={13} />의견서·보고서</button>
+        </div>
+        {msg && <div className={msg.startsWith("기록") ? "text-good" : "text-bad"}>{msg}</div>}
+        <div className="text-[10.5px] text-muted">기록은 덮어쓰지 않고 이력으로 쌓입니다. 자동 검토 결과({LV[res.review?.level]?.label ?? "-"})는 참고용이며 최종 의견은 검토자가 정합니다.</div>
+      </div>
     </Panel>
   );
 }
