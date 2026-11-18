@@ -78,6 +78,7 @@ export default function WorkspacePage() {
   }, [date, p]);
 
   const scB = p?.scenarios.find((s) => s.code === "B");
+  const drawnB = !!scB?.layout;
   const shown = live ?? drafts;
   const bBuildings: SceneBuilding[] = useMemo(() => (sb ? sb.buildings.map((b) => (b.kind === "MAIN" && shown[b.id] && !same(shown[b.id], b.transform) ? draftBuilding(b, shown[b.id]) : b)) : []), [sb, shown]);
   const changed = useMemo(() => new Set(Object.entries(shown).filter(([, t]) => !same(t, ZERO)).map(([k]) => k)), [shown]);
@@ -86,6 +87,7 @@ export default function WorkspacePage() {
   /** Persist drafts that differ from the saved scenario (only changed buildings are PATCHed). */
   const commit = useCallback(async (next: Drafts, record = true) => {
     if (!sb || !scB) return;
+    if (scB.layout) { setMsg("변경안 B는 도면으로 입력되어 여기서 옮길 수 없습니다. 수정한 도면을 [도면 입력]에서 다시 올리세요."); return; }
     if (record) { setPast((h) => [...h.slice(-49), drafts]); setFuture([]); }
     setDrafts(next);
     setLive(null);
@@ -130,7 +132,7 @@ export default function WorkspacePage() {
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const edit: EditConfig | null = useMemo(() => sb ? {
+  const edit: EditConfig | null = useMemo(() => sb && !drawnB ? {
     ids: new Set(sb.buildings.filter((b) => b.kind === "MAIN").map((b) => b.id)),
     centroids: Object.fromEntries(bBuildings.map((b) => [b.id, b.centroid as Pt])),
     onDrag: (bid, d, phase) => {
@@ -140,7 +142,7 @@ export default function WorkspacePage() {
       if (phase === "move") setLive({ ...drafts, [bid]: nt });
       else { dragBase.current = null; commit({ ...drafts, [bid]: nt }); }
     },
-  } : null, [sb, bBuildings, drafts, commit]);
+  } : null, [sb, bBuildings, drafts, commit, drawnB]);
 
   // live clearance lines for the selected building (client-side, ENU metres)
   const clrLines: Line[] = useMemo(() => {
@@ -188,6 +190,7 @@ export default function WorkspacePage() {
           <span className="flex items-center gap-1.5 text-[11.5px] text-ink-2" aria-live="polite">
             {saving === "saving" ? <><Spinner size={12} />저장 중</> : saving === "error" ? <span className="text-bad">저장 실패</span> : <><span className="live-dot" />B rev {scB?.revision} 저장됨</>}
           </span>
+          <button className="btn" onClick={() => nav(`/projects/${id}/layout`)} data-testid="go-layout">도면으로 입력</button>
           <button className="btn btn-primary" onClick={() => nav(`/projects/${id}/analysis`)} data-testid="go-analysis"><Zap size={14} />정밀 분석 실행</button>
         </>
       } />
@@ -217,6 +220,14 @@ export default function WorkspacePage() {
 
         {/* left: editor */}
         <div className="absolute bottom-[132px] left-3 top-3 z-10 flex w-[300px] flex-col gap-3 overflow-y-auto pr-0.5">
+          {(drawnB || p.scenarios.find((s) => s.code === "A")?.layout) && (
+            <Panel title="도면으로 입력된 안" icon={<Building2 size={14} />}>
+              <div className="text-[12px] leading-relaxed text-ink-2">
+                {p.scenarios.filter((s) => s.layout).map((s) => <div key={s.code}>{s.code === "A" ? "기존안 A" : "변경안 B"}: {s.layout!.n_buildings}개 동 · {s.layout!.source?.filename}</div>)}
+                {drawnB && <div className="mt-1 text-muted">도면으로 입력한 안은 여기서 끌어 옮길 수 없습니다. 수정은 [도면 입력]에서 도면을 다시 올려 반영하세요.</div>}
+              </div>
+            </Panel>
+          )}
           <Panel title="설계 편집 · 변경안 B" icon={<Building2 size={14} />} actions={
             <div className="flex gap-1">
               <button className="btn btn-sm btn-icon btn-ghost" onClick={undo} disabled={!past.length} title="되돌리기 (Ctrl+Z)" aria-label="되돌리기"><Undo2 size={14} /></button>

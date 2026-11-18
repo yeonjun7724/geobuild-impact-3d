@@ -1,7 +1,8 @@
 /* API client. All analysis numbers come from the backend; the UI never computes report values. */
 
 export type Transform = { dx: number; dy: number; rot_deg: number; floors_delta: number };
-export type Scenario = { id: string; code: "A" | "B"; name: string; locked: boolean; revision: number; content_hash: string; transforms: Record<string, Transform> };
+export type Scenario = { id: string; code: "A" | "B"; name: string; locked: boolean; revision: number; content_hash: string; transforms: Record<string, Transform>;
+  layout?: null | { n_buildings: number; source: any; buildings: { id: string; floors: number }[] } };
 export type Badges = {
   location: { class: string; label: string; approximate: boolean; boundary_verified: boolean };
   terrain: null | { class: string; label: string; native_cell_m: number; vertical_datum: string; vertical_datum_status: string; surface_type: string; sha256: string; acquired: string | null; license: string | null };

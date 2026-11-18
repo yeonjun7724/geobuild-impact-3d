@@ -1,7 +1,7 @@
 /* App shell (top bar + workflow stepper) and shared helpers. */
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { AlertTriangle, Check, ChevronRight, Database, FileText, LayoutGrid, PenTool, Play, BarChart3 } from "lucide-react";
+import { AlertTriangle, FileUp, Check, ChevronRight, Database, FileText, LayoutGrid, PenTool, Play, BarChart3 } from "lucide-react";
 import { api, type Badges, type Project, type SceneBuilding } from "../api";
 import { ClassChip, Spinner } from "../ui";
 
@@ -32,7 +32,8 @@ export function TopBar({ project, right, latestRunId }: { project?: Project | nu
   const loc = useLocation();
   const path = loc.pathname;
   const steps = project ? [
-    { to: `/projects/${project.id}`, label: "변경안 입력", icon: <PenTool size={13} />, active: path === `/projects/${project.id}`, enabled: true },
+    { to: `/projects/${project.id}/layout`, label: "도면 입력", icon: <FileUp size={13} />, active: path.endsWith("/layout"), enabled: true },
+    { to: `/projects/${project.id}`, label: "3D 확인·조정", icon: <PenTool size={13} />, active: path === `/projects/${project.id}`, enabled: true },
     { to: `/projects/${project.id}/analysis`, label: "전후 계산", icon: <Play size={13} />, active: path.endsWith("/analysis"), enabled: true },
     { to: latestRunId ? `/projects/${project.id}/compare/${latestRunId}` : "", label: "검토 판정", icon: <BarChart3 size={13} />, active: path.includes("/compare/"), enabled: !!latestRunId },
     { to: latestRunId ? `/reports/${latestRunId}` : "", label: "보고서", icon: <FileText size={13} />, active: path.startsWith("/reports/"), enabled: !!latestRunId },
