@@ -1,0 +1,93 @@
+{
+ "total": 161.266,
+ "context": {
+  "editProject": "e06047c21e19",
+  "resultProject": "e321b79a52f0",
+  "run": "f9b789405a8c",
+  "report": "29a83325b457"
+ },
+ "scenes": [
+  {
+   "id": "s01_title",
+   "start": 0,
+   "dur": 9.587,
+   "rec": null
+  },
+  {
+   "id": "s02_problem",
+   "start": 9.587,
+   "dur": 16.596,
+   "rec": null
+  },
+  {
+   "id": "s03_flow",
+   "start": 26.183,
+   "dur": 13.362,
+   "rec": null
+  },
+  {
+   "id": "s04_edit",
+   "start": 39.545,
+   "dur": 19.549,
+   "rec": {
+    "src": "assets/rec/edit.mp4",
+    "len": 33.233333,
+    "rate": 1.7
+   }
+  },
+  {
+   "id": "s05_engine",
+   "start": 59.094,
+   "dur": 23.466,
+   "rec": null
+  },
+  {
+   "id": "s06_facade",
+   "start": 82.56,
+   "dur": 14.291,
+   "rec": {
+    "src": "assets/rec/facade.mp4",
+    "len": 13.866667,
+    "rate": 0.97
+   }
+  },
+  {
+   "id": "s07_shadow",
+   "start": 96.851,
+   "dur": 11.745,
+   "rec": {
+    "src": "assets/rec/timelapse.mp4",
+    "len": 19.966667,
+    "rate": 1.7
+   }
+  },
+  {
+   "id": "s08_verdict",
+   "start": 108.596,
+   "dur": 13.315,
+   "rec": {
+    "src": "assets/rec/verdict.mp4",
+    "len": 17.966667,
+    "rate": 1.349
+   }
+  },
+  {
+   "id": "s09_report",
+   "start": 121.911,
+   "dur": 12.071,
+   "rec": null
+  },
+  {
+   "id": "s10_verify",
+   "start": 133.982,
+   "dur": 16.284,
+   "rec": null
+  },
+  {
+   "id": "s11_end",
+   "start": 150.266,
+   "dur": 11,
+   "rec": null
+  }
+ ]
+}

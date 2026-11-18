@@ -1,0 +1,55 @@
+<template>
+  <style>
+
+  @font-face { font-family: "Pretendard"; src: url("assets/fonts/PretendardVariable.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+  #root { position: absolute; inset: 0; font-family: "Pretendard", sans-serif; color: #0b1220; letter-spacing: -0.02em; overflow: hidden; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 14px; font-size: 28px; font-weight: 700; color: #2f7de1; letter-spacing: 0.02em; }
+  .eyebrow b { display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: #2f7de1; color: #fff; font-size: 28px; }
+  .h1 { font-size: 46px; font-weight: 800; line-height: 1.22; letter-spacing: -0.035em; }
+  .muted { color: #5b6678; }
+  .card { background: #fff; border: 1px solid #dfe6ef; border-radius: 22px; box-shadow: 0 18px 50px -24px rgba(16, 38, 74, .28); }
+  .pill { display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 999px; background: #fff; border: 1px solid #dfe6ef; font-weight: 600; font-size: 28px; box-shadow: 0 10px 30px -18px rgba(16, 38, 74, .35); }
+  .blue { color: #2f7de1; } .red { color: #e2373c; } .sun { color: #f2a516; }
+
+
+  .head { position: absolute; left: 272px; top: 46px; display: flex; align-items: center; gap: 22px; }
+  .head .h1 { font-size: 40px; }
+  .frame { position: absolute; left: 272px; top: 168px; width: 1376px; height: 774px; border-radius: 20px; overflow: hidden; background: #0b1220;
+           box-shadow: 0 40px 90px -40px rgba(10, 30, 70, .55), 0 0 0 1px rgba(15, 35, 70, .12); }
+  .frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .co { position: absolute; transform-origin: 0 50%; font-size: 28px; padding: 10px 20px; border-color: #2f7de1; box-shadow: 0 14px 34px -14px rgba(47,125,225,.6); }
+  .co i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  </style>
+  <div id="root" data-composition-id="s07_shadow" data-width="1920" data-height="1080">
+    <div id="s07_shadow-wrap" style="position:absolute;inset:0">
+      <div id="s07_shadow-drift" style="position:absolute;inset:0">
+
+      <div class="head" id="s07_shadow-head"><span class="eyebrow"><b>B</b>지표면 그림자</span><span class="h1">시간대별 그늘 변화를 재생합니다</span></div>
+      <div class="frame" id="s07_shadow-frame">
+        <video id="s07_shadow-vid" class="clip" src="assets/rec/timelapse.mp4" muted playsinline data-start="0" data-duration="11.745" data-media-start="0" data-playback-rate="1.7" data-track-index="0"></video>
+      </div>
+<div id="s07_shadow-co0" class="pill co" style="left:544.3333333333333px;top:268.3333333333333px"><i style="background:#e2373c"></i>새로 생긴 그늘</div>
+<div id="s07_shadow-co1" class="pill co" style="left:544.3333333333333px;top:308.4666666666667px"><i style="background:#2f7de1"></i>사라진 그늘</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const D = 11.745, L = [0.55,4.168];
+    tl.fromTo("#s07_shadow-wrap", { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power2.out" }, 0);
+    tl.to("#s07_shadow-wrap", { opacity: 0, duration: 0.4, ease: "power2.in" }, D - 0.42);
+    
+    const num = (sel, to, at, dur = 1.2, fmt = (v) => Math.round(v).toLocaleString("en-US")) => {
+      const o = { v: 0 }, el = document.querySelector(sel);
+      tl.fromTo(o, { v: 0 }, { v: to, duration: dur, ease: "power2.out", onUpdate: () => { el.textContent = fmt(o.v); } }, at);
+    };
+
+    tl.fromTo("#s07_shadow-frame", { y: 40, scale: 0.97 }, { y: 0, scale: 1, duration: 0.8, ease: "power3.out" }, 0);
+    tl.fromTo("#s07_shadow-head", { x: -30, opacity: 0 }, { x: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 0.1);
+    tl.fromTo("#s07_shadow-co0", { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, 4.168);
+    tl.to("#s07_shadow-co0", { opacity: 0, duration: 0.3 }, D - 0.8);
+    tl.fromTo("#s07_shadow-co1", { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, 4.668);
+    tl.to("#s07_shadow-co1", { opacity: 0, duration: 0.3 }, D - 0.8);
+    window.__timelines["s07_shadow"] = tl;
+  </script>
+</template>

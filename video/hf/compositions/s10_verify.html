@@ -1,0 +1,56 @@
+<template>
+  <style>
+
+  @font-face { font-family: "Pretendard"; src: url("assets/fonts/PretendardVariable.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+  #root { position: absolute; inset: 0; font-family: "Pretendard", sans-serif; color: #0b1220; letter-spacing: -0.02em; overflow: hidden; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 14px; font-size: 28px; font-weight: 700; color: #2f7de1; letter-spacing: 0.02em; }
+  .eyebrow b { display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: #2f7de1; color: #fff; font-size: 28px; }
+  .h1 { font-size: 46px; font-weight: 800; line-height: 1.22; letter-spacing: -0.035em; }
+  .muted { color: #5b6678; }
+  .card { background: #fff; border: 1px solid #dfe6ef; border-radius: 22px; box-shadow: 0 18px 50px -24px rgba(16, 38, 74, .28); }
+  .pill { display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 999px; background: #fff; border: 1px solid #dfe6ef; font-weight: 600; font-size: 28px; box-shadow: 0 10px 30px -18px rgba(16, 38, 74, .35); }
+  .blue { color: #2f7de1; } .red { color: #e2373c; } .sun { color: #f2a516; }
+
+
+  .top { position: absolute; left: 160px; top: 120px; }
+  .g { position: absolute; left: 160px; right: 160px; top: 360px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px; }
+  .g .card { padding: 36px 32px; height: 330px; display: flex; flex-direction: column; }
+  .g .v { font-size: 76px; font-weight: 900; letter-spacing: -0.045em; color: #2f7de1; }
+  .g .k { font-size: 26px; font-weight: 800; margin-top: 10px; }
+  .g .d { font-size: 26px; color: #5b6678; margin-top: auto; line-height: 1.4; }
+  .ok { display: inline-flex; gap: 8px; align-items: center; font-size: 26px; font-weight: 800; color: #12a150; }
+  </style>
+  <div id="root" data-composition-id="s10_verify" data-width="1920" data-height="1080">
+    <div id="s10_verify-wrap" style="position:absolute;inset:0">
+      <div id="s10_verify-drift" style="position:absolute;inset:0">
+
+      <div class="top" id="s10-top"><div class="eyebrow">독립 검증</div><div class="h1" style="font-size:58px;margin-top:14px">숫자를 믿을 수 있도록</div></div>
+      <div class="g">
+        <div class="card" id="s10-c0"><span class="ok">✔ PASS</span><div class="v"><span id="s10-n0">0</span> cm</div><div class="k">기둥 그림자 해석해</div><div class="d">L = H / tan α 와 광선 결과<br>55.55 m vs 55.54 m</div></div>
+        <div class="card" id="s10-c1"><span class="ok">✔ PASS</span><div class="v">&lt;<span id="s10-n1">0</span>°</div><div class="k">태양 위치</div><div class="d">NREL SPA와 별도 구현 NOAA<br>1년 비교 최대 차이</div></div>
+        <div class="card" id="s10-c2"><span class="ok">✔ PASS</span><div class="v"><span id="s10-n2">0</span>%</div><div class="k">엔진 교차검증</div><div class="d">Open3D vs 독립 float64 엔진<br>차폐 여부·원인 동 일치율</div></div>
+        <div class="card" id="s10-c3"><span class="ok">✔ PASS</span><div class="v"><span id="s10-n3">0</span></div><div class="k">자동 테스트</div><div class="d">단위·기하·API·보고서<br>83개 모두 통과</div></div>
+      </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const D = 16.284, L = [0.55,4.598,11.643];
+    tl.fromTo("#s10_verify-wrap", { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power2.out" }, 0);
+    tl.to("#s10_verify-wrap", { opacity: 0, duration: 0.4, ease: "power2.in" }, D - 0.42);
+    tl.fromTo("#s10_verify-drift", { scale: 1 }, { scale: 1.03, duration: D, ease: "none" }, 0);
+    const num = (sel, to, at, dur = 1.2, fmt = (v) => Math.round(v).toLocaleString("en-US")) => {
+      const o = { v: 0 }, el = document.querySelector(sel);
+      tl.fromTo(o, { v: 0 }, { v: to, duration: dur, ease: "power2.out", onUpdate: () => { el.textContent = fmt(o.v); } }, at);
+    };
+
+    tl.fromTo("#s10-top", { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 0.1);
+    [0, 1, 2, 3].forEach((i) => tl.fromTo("#s10-c" + i, { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, [L[1], L[1] + 2.6, L[1] + 4.6, L[2]][i]));
+    num("#s10-n0", 1, L[1] + 0.2, 0.6);
+    num("#s10-n1", 0.05, L[1] + 2.8, 0.8, (v) => v.toFixed(2));
+    num("#s10-n2", 100, L[1] + 4.8, 0.9);
+    num("#s10-n3", 83, L[2] + 0.2, 1.0);
+    window.__timelines["s10_verify"] = tl;
+  </script>
+</template>

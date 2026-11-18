@@ -1,0 +1,52 @@
+<template>
+  <style>
+
+  @font-face { font-family: "Pretendard"; src: url("assets/fonts/PretendardVariable.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+  #root { position: absolute; inset: 0; font-family: "Pretendard", sans-serif; color: #0b1220; letter-spacing: -0.02em; overflow: hidden; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 14px; font-size: 28px; font-weight: 700; color: #2f7de1; letter-spacing: 0.02em; }
+  .eyebrow b { display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: #2f7de1; color: #fff; font-size: 28px; }
+  .h1 { font-size: 46px; font-weight: 800; line-height: 1.22; letter-spacing: -0.035em; }
+  .muted { color: #5b6678; }
+  .card { background: #fff; border: 1px solid #dfe6ef; border-radius: 22px; box-shadow: 0 18px 50px -24px rgba(16, 38, 74, .28); }
+  .pill { display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 999px; background: #fff; border: 1px solid #dfe6ef; font-weight: 600; font-size: 28px; box-shadow: 0 10px 30px -18px rgba(16, 38, 74, .35); }
+  .blue { color: #2f7de1; } .red { color: #e2373c; } .sun { color: #f2a516; }
+
+
+  .head { position: absolute; left: 272px; top: 46px; display: flex; align-items: center; gap: 22px; }
+  .head .h1 { font-size: 40px; }
+  .frame { position: absolute; left: 272px; top: 168px; width: 1376px; height: 774px; border-radius: 20px; overflow: hidden; background: #0b1220;
+           box-shadow: 0 40px 90px -40px rgba(10, 30, 70, .55), 0 0 0 1px rgba(15, 35, 70, .12); }
+  .frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .co { position: absolute; transform-origin: 0 50%; font-size: 28px; padding: 10px 20px; border-color: #2f7de1; box-shadow: 0 14px 34px -14px rgba(47,125,225,.6); }
+  .co i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  </style>
+  <div id="root" data-composition-id="s06_facade" data-width="1920" data-height="1080">
+    <div id="s06_facade-wrap" style="position:absolute;inset:0">
+      <div id="s06_facade-drift" style="position:absolute;inset:0">
+
+      <div class="head" id="s06_facade-head"><span class="eyebrow"><b>A</b>외벽 직사일조</span><span class="h1">붉을수록 일조가 줄어든 외벽입니다</span></div>
+      <div class="frame" id="s06_facade-frame">
+        <video id="s06_facade-vid" class="clip" src="assets/rec/facade.mp4" muted playsinline data-start="0" data-duration="14.291" data-media-start="0" data-playback-rate="0.97" data-track-index="0"></video>
+      </div>
+<div id="s06_facade-co0" class="pill co" style="left:1404.3333333333333px;top:770px"><i style="background:#2f7de1"></i>시간대별 일조 0/1 · 차폐 원인 동</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const D = 14.291, L = [0.55,7.304];
+    tl.fromTo("#s06_facade-wrap", { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power2.out" }, 0);
+    tl.to("#s06_facade-wrap", { opacity: 0, duration: 0.4, ease: "power2.in" }, D - 0.42);
+    
+    const num = (sel, to, at, dur = 1.2, fmt = (v) => Math.round(v).toLocaleString("en-US")) => {
+      const o = { v: 0 }, el = document.querySelector(sel);
+      tl.fromTo(o, { v: 0 }, { v: to, duration: dur, ease: "power2.out", onUpdate: () => { el.textContent = fmt(o.v); } }, at);
+    };
+
+    tl.fromTo("#s06_facade-frame", { y: 40, scale: 0.97 }, { y: 0, scale: 1, duration: 0.8, ease: "power3.out" }, 0);
+    tl.fromTo("#s06_facade-head", { x: -30, opacity: 0 }, { x: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 0.1);
+    tl.fromTo("#s06_facade-co0", { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" }, 8.504);
+    tl.to("#s06_facade-co0", { opacity: 0, duration: 0.3 }, D - 0.8);
+    window.__timelines["s06_facade"] = tl;
+  </script>
+</template>

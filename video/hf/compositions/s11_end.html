@@ -1,0 +1,52 @@
+<template>
+  <style>
+
+  @font-face { font-family: "Pretendard"; src: url("assets/fonts/PretendardVariable.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+  #root { position: absolute; inset: 0; font-family: "Pretendard", sans-serif; color: #0b1220; letter-spacing: -0.02em; overflow: hidden; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 14px; font-size: 28px; font-weight: 700; color: #2f7de1; letter-spacing: 0.02em; }
+  .eyebrow b { display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: #2f7de1; color: #fff; font-size: 28px; }
+  .h1 { font-size: 46px; font-weight: 800; line-height: 1.22; letter-spacing: -0.035em; }
+  .muted { color: #5b6678; }
+  .card { background: #fff; border: 1px solid #dfe6ef; border-radius: 22px; box-shadow: 0 18px 50px -24px rgba(16, 38, 74, .28); }
+  .pill { display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 999px; background: #fff; border: 1px solid #dfe6ef; font-weight: 600; font-size: 28px; box-shadow: 0 10px 30px -18px rgba(16, 38, 74, .35); }
+  .blue { color: #2f7de1; } .red { color: #e2373c; } .sun { color: #f2a516; }
+
+
+  .c { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; }
+  .mark { display: flex; align-items: center; gap: 28px; }
+  .mark span { font-size: 64px; font-weight: 900; letter-spacing: .2em; }
+  .tag { font-size: 34px; font-weight: 600; color: #5b6678; }
+  .url { font-size: 30px; font-weight: 700; color: #2f7de1; padding: 14px 28px; border-radius: 999px; background: #fff; border: 1px solid #dfe6ef; }
+  .disc { position: absolute; left: 0; right: 0; bottom: 170px; text-align: center; font-size: 26px; color: #7b889b; }
+  </style>
+  <div id="root" data-composition-id="s11_end" data-width="1920" data-height="1080">
+    <div id="s11_end-wrap" style="position:absolute;inset:0">
+      <div id="s11_end-drift" style="position:absolute;inset:0">
+
+      <div class="c">
+        <div class="tag" id="s11-tag">설계변경 검토, 이제 계산으로 판단하세요</div>
+        <div class="mark" id="s11-mark"><svg width="104" height="104" viewBox="0 0 32 32"><defs><linearGradient id="lg104" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6cb2ff"/><stop offset="1" stop-color="#2f7de1"/></linearGradient></defs><rect x="2" y="2" width="28" height="28" rx="8" fill="url(#lg104)"/><path d="M9 22V13l5-3v12M15 22V9l4-2v15M20 22v-8l3 1.5V22" stroke="#fff" stroke-width="1.8" fill="none" stroke-linejoin="round"/><circle cx="24" cy="8.5" r="2.4" fill="#ffd36b"/></svg><span>JIRISO DATA STUDIO</span></div>
+        <div class="url" id="s11-url">GeoBuild Impact 3D · github.com/yeonjun7724/geobuild-impact-3d</div>
+      </div>
+      <div class="disc" id="s11-disc">가상 PoC · 인천계양 A2블록 주변을 배경으로 한 가상 단지이며 실제 LH 설계안·인허가 검토가 아닙니다</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const D = 11, L = [0.55,5.329];
+    tl.fromTo("#s11_end-wrap", { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power2.out" }, 0);
+    
+    tl.fromTo("#s11_end-drift", { scale: 1 }, { scale: 1.03, duration: D, ease: "none" }, 0);
+    const num = (sel, to, at, dur = 1.2, fmt = (v) => Math.round(v).toLocaleString("en-US")) => {
+      const o = { v: 0 }, el = document.querySelector(sel);
+      tl.fromTo(o, { v: 0 }, { v: to, duration: dur, ease: "power2.out", onUpdate: () => { el.textContent = fmt(o.v); } }, at);
+    };
+
+    tl.fromTo("#s11-tag", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 0.2);
+    tl.fromTo("#s11-mark", { scale: 0.92, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.9, ease: "power3.out" }, L[1] - 0.4);
+    tl.fromTo("#s11-url", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, L[1] + 0.6);
+    tl.fromTo("#s11-disc", { opacity: 0 }, { opacity: 1, duration: 0.6 }, L[1] + 1.0);
+    window.__timelines["s11_end"] = tl;
+  </script>
+</template>

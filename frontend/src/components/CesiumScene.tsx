@@ -8,7 +8,7 @@ import {
   BoundingSphere, Cartesian2, Cartesian3, Color, ColorGeometryInstanceAttribute, ComponentDatatype, CustomHeightmapTerrainProvider,
   EllipsoidTerrainProvider, Geometry, GeometryAttribute, GeometryInstance, GeometryPipeline, HorizontalOrigin, Ion, JulianDate, LabelCollection,
   LabelStyle, Material, MaterialAppearance, Math as CMath, Matrix4, NearFarScalar, OpenStreetMapImageryProvider, PerInstanceColorAppearance,
-  PointPrimitiveCollection, PolylineCollection, Primitive, PrimitiveType, ShadowMode, VerticalOrigin, Viewer, defined,
+  PointPrimitiveCollection, PolylineCollection, Primitive, PrimitiveType, SceneTransforms, ShadowMode, VerticalOrigin, Viewer, defined,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { b64ToF32, b64ToU32, type GroundMesh, type SceneBuilding } from "../api";
@@ -167,6 +167,16 @@ export default function CesiumScene(p: Props) {
     }
     viewerRef.current = v;
     const sc = v.scene;
+    // Read-only helper for automated demos/tests: site ENU display coords (x, y, z above the pad) -> screen pixels.
+    const hook = { toScreen: (x: number, y: number, z = 0) => {
+      const w = Matrix4.multiplyByPoint(mmRef.current, new Cartesian3(x, y, z), new Cartesian3());
+      const s = SceneTransforms.worldToWindowCoordinates(sc, w);
+      if (!s) return null;
+      const r = sc.canvas.getBoundingClientRect(); // page coordinates, ready for mouse input
+      return { x: r.left + s.x, y: r.top + s.y };
+    } };
+    const g = window as unknown as { __geobuild?: { viewers: typeof hook[] } };
+    (g.__geobuild ??= { viewers: [] }).viewers.push(hook);
     sc.globe.baseColor = Color.fromCssColorString("#1b2433");
     sc.globe.depthTestAgainstTerrain = true;
     sc.globe.showGroundAtmosphere = true;
@@ -272,6 +282,7 @@ export default function CesiumScene(p: Props) {
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerup", onUp);
       canvas.removeEventListener("click", onClick);
+      if (g.__geobuild) g.__geobuild.viewers = g.__geobuild.viewers.filter((h) => h !== hook);
       p.onViewer?.(null);
       if (!v.isDestroyed()) v.destroy();
       viewerRef.current = null;

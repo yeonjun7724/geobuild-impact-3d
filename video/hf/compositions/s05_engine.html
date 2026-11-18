@@ -1,0 +1,80 @@
+<template>
+  <style>
+
+  @font-face { font-family: "Pretendard"; src: url("assets/fonts/PretendardVariable.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+  #root { position: absolute; inset: 0; font-family: "Pretendard", sans-serif; color: #0b1220; letter-spacing: -0.02em; overflow: hidden; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 14px; font-size: 28px; font-weight: 700; color: #2f7de1; letter-spacing: 0.02em; }
+  .eyebrow b { display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: #2f7de1; color: #fff; font-size: 28px; }
+  .h1 { font-size: 46px; font-weight: 800; line-height: 1.22; letter-spacing: -0.035em; }
+  .muted { color: #5b6678; }
+  .card { background: #fff; border: 1px solid #dfe6ef; border-radius: 22px; box-shadow: 0 18px 50px -24px rgba(16, 38, 74, .28); }
+  .pill { display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 999px; background: #fff; border: 1px solid #dfe6ef; font-weight: 600; font-size: 28px; box-shadow: 0 10px 30px -18px rgba(16, 38, 74, .35); }
+  .blue { color: #2f7de1; } .red { color: #e2373c; } .sun { color: #f2a516; }
+
+
+  .top { position: absolute; left: 160px; top: 90px; }
+  .dia { position: absolute; left: 160px; top: 250px; width: 900px; height: 520px; }
+  .cards { position: absolute; left: 1120px; right: 160px; top: 250px; display: flex; flex-direction: column; gap: 22px; }
+  .cards .card { padding: 26px 32px; }
+  .cards .k { font-size: 28px; font-weight: 800; color: #2f7de1; }
+  .cards .v { font-size: 52px; font-weight: 900; letter-spacing: -0.04em; margin-top: 4px; }
+  .cards .d { font-size: 26px; color: #5b6678; margin-top: 2px; }
+  .lab { font-family: "Pretendard"; font-size: 26px; font-weight: 700; fill: #5b6678; }
+  </style>
+  <div id="root" data-composition-id="s05_engine" data-width="1920" data-height="1080">
+    <div id="s05_engine-wrap" style="position:absolute;inset:0">
+      <div id="s05_engine-drift" style="position:absolute;inset:0">
+
+      <div class="top" id="s05-top"><div class="eyebrow">분석 엔진</div><div class="h1" style="font-size:54px;margin-top:12px">태양 위치 × 3D 광선추적, 실제로 계산합니다</div></div>
+      <svg class="dia" viewBox="0 0 900 520" id="s05-dia">
+        <rect x="0" y="0" width="900" height="520" rx="22" fill="#fff" stroke="#dfe6ef"/>
+        <path d="M 40 470 Q 300 40 860 300" fill="none" stroke="#f2c14e" stroke-width="3" stroke-dasharray="8 10"/>
+        <circle id="s05-sun" cx="200" cy="170" r="30" fill="#ffd36b" stroke="#f2a516" stroke-width="3"/>
+        <text x="120" y="110" class="lab">NREL SPA · 동지 08–16시</text>
+        <line id="s05-r0" x1="610" y1="440" x2="200" y2="170" stroke="#e2373c" stroke-width="3" stroke-dasharray="6 6"/><line id="s05-r1" x1="610" y1="378" x2="200" y2="170" stroke="#e2373c" stroke-width="3" stroke-dasharray="6 6"/><line id="s05-r2" x1="610" y1="316" x2="200" y2="170" stroke="#2f7de1" stroke-width="3" stroke-dasharray="0"/><line id="s05-r3" x1="610" y1="254" x2="200" y2="170" stroke="#2f7de1" stroke-width="3" stroke-dasharray="0"/><line id="s05-r4" x1="610" y1="192" x2="200" y2="170" stroke="#2f7de1" stroke-width="3" stroke-dasharray="0"/>
+        <rect x="360" y="290" width="120" height="190" rx="6" fill="#ff9f43" stroke="#f08a24" stroke-width="2"/>
+        <text x="420" y="400" class="lab" text-anchor="middle" style="fill:#fff">변경 동</text>
+        <rect x="610" y="150" width="150" height="330" rx="6" fill="#f3f6fa" stroke="#9fb0c8" stroke-width="2"/>
+        <text x="640" y="140" class="lab">수광 동</text>
+        <line x1="20" x2="880" y1="480" y2="480" stroke="#9fb0c8" stroke-width="3"/>
+        <circle id="s05-p0" cx="610" cy="440" r="9" fill="#e2373c" stroke="#fff" stroke-width="3"/><circle id="s05-p1" cx="610" cy="378" r="9" fill="#e2373c" stroke="#fff" stroke-width="3"/><circle id="s05-p2" cx="610" cy="316" r="9" fill="#2f7de1" stroke="#fff" stroke-width="3"/><circle id="s05-p3" cx="610" cy="254" r="9" fill="#2f7de1" stroke="#fff" stroke-width="3"/><circle id="s05-p4" cx="610" cy="192" r="9" fill="#2f7de1" stroke="#fff" stroke-width="3"/>
+        <text x="500" y="505" class="lab" id="s05-legend"><tspan fill="#2f7de1">━ 일조</tspan>   <tspan fill="#e2373c">┅ 가려짐 (원인 동 기록)</tspan></text>
+      </svg>
+      <div class="cards">
+        <div class="card" id="s05-c0"><div class="k">A · 외벽 직사일조</div><div class="v"><span id="s05-n0">0</span></div><div class="d">수광점 2,698개 × 5분 간격 96시각 광선</div></div>
+        <div class="card" id="s05-c1"><div class="k">B · 지표면 그림자</div><div class="v"><span id="s05-n1">0</span></div><div class="d">2 m 격자 20,774칸 × 96시각 광선</div></div>
+        <div class="card" id="s05-c2"><div class="k">C · 동간 이격</div><div class="v"><span id="s05-n2">0</span>쌍</div><div class="d">주동 footprint 사이 수평 최단거리</div></div>
+      </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const D = 23.466, L = [0.55,4.076,9.03,15.632];
+    tl.fromTo("#s05_engine-wrap", { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power2.out" }, 0);
+    tl.to("#s05_engine-wrap", { opacity: 0, duration: 0.4, ease: "power2.in" }, D - 0.42);
+    tl.fromTo("#s05_engine-drift", { scale: 1 }, { scale: 1.03, duration: D, ease: "none" }, 0);
+    const num = (sel, to, at, dur = 1.2, fmt = (v) => Math.round(v).toLocaleString("en-US")) => {
+      const o = { v: 0 }, el = document.querySelector(sel);
+      tl.fromTo(o, { v: 0 }, { v: to, duration: dur, ease: "power2.out", onUpdate: () => { el.textContent = fmt(o.v); } }, at);
+    };
+
+    tl.fromTo("#s05-top", { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 0.1);
+    tl.fromTo("#s05-dia", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" }, 0.3);
+    for (let i = 0; i < 5; i++) {
+      tl.fromTo("#s05-r" + i, { opacity: 0 }, { opacity: 1, duration: 0.3 }, L[2] + i * 0.18);
+      tl.fromTo("#s05-p" + i, { scale: 0, transformOrigin: "50% 50%" }, { scale: 1, duration: 0.35, ease: "back.out(2)" }, L[2] + i * 0.18);
+    }
+    tl.fromTo("#s05-legend", { opacity: 0 }, { opacity: 1, duration: 0.4 }, L[2] + 1.1);
+    const sun = { p: 0 }, sel = document.querySelector("#s05-sun"), rays = [0, 1, 2, 3, 4].map((i) => document.querySelector("#s05-r" + i));
+    tl.fromTo(sun, { p: 0 }, { p: 1, duration: L[2] - L[1] + 0.2, ease: "power1.inOut", onUpdate: () => {
+      const u = 0.12 + sun.p * 0.28, x = (1 - u) * (1 - u) * 40 + 2 * (1 - u) * u * 300 + u * u * 860, y = (1 - u) * (1 - u) * 470 + 2 * (1 - u) * u * 40 + u * u * 300;
+      sel.setAttribute("cx", x); sel.setAttribute("cy", y); rays.forEach((r) => { r.setAttribute("x2", x); r.setAttribute("y2", y); });
+    } }, L[1]);
+    [0, 1, 2].forEach((i) => tl.fromTo("#s05-c" + i, { x: 40, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, (i < 2 ? L[2] : L[3]) + (i === 1 ? 0.9 : 0.1)));
+    num("#s05-n0", 267648, L[2] + 0.3, 1.6);
+    num("#s05-n1", 3988608, L[2] + 1.0, 1.8);
+    num("#s05-n2", 21, L[3] + 0.3, 0.8);
+    window.__timelines["s05_engine"] = tl;
+  </script>
+</template>

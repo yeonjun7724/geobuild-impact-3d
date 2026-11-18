@@ -1,0 +1,57 @@
+<template>
+  <style>
+
+  @font-face { font-family: "Pretendard"; src: url("assets/fonts/PretendardVariable.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+  #root { position: absolute; inset: 0; font-family: "Pretendard", sans-serif; color: #0b1220; letter-spacing: -0.02em; overflow: hidden; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 14px; font-size: 28px; font-weight: 700; color: #2f7de1; letter-spacing: 0.02em; }
+  .eyebrow b { display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: #2f7de1; color: #fff; font-size: 28px; }
+  .h1 { font-size: 46px; font-weight: 800; line-height: 1.22; letter-spacing: -0.035em; }
+  .muted { color: #5b6678; }
+  .card { background: #fff; border: 1px solid #dfe6ef; border-radius: 22px; box-shadow: 0 18px 50px -24px rgba(16, 38, 74, .28); }
+  .pill { display: inline-flex; align-items: center; gap: 10px; padding: 10px 18px; border-radius: 999px; background: #fff; border: 1px solid #dfe6ef; font-weight: 600; font-size: 28px; box-shadow: 0 10px 30px -18px rgba(16, 38, 74, .35); }
+  .blue { color: #2f7de1; } .red { color: #e2373c; } .sun { color: #f2a516; }
+
+
+  .top { position: absolute; left: 160px; top: 110px; }
+  .grid3 { position: absolute; left: 160px; right: 160px; top: 330px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; }
+  .grid3 .card { padding: 40px 40px 36px; height: 360px; display: flex; flex-direction: column; gap: 14px; }
+  .k { font-size: 26px; font-weight: 700; color: #5b6678; display: flex; align-items: center; gap: 12px; }
+  .v { font-size: 74px; font-weight: 900; letter-spacing: -0.04em; }
+  .d { font-size: 28px; color: #5b6678; line-height: 1.4; margin-top: auto; }
+  .guess { position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; top: 770px; font-size: 34px; font-weight: 700; padding: 18px 34px; border-radius: 18px; background: #0b1220; color: #fff; display: flex; gap: 18px; align-items: center; }
+  .guess s { text-decoration-thickness: 4px; text-decoration-color: #e2373c; color: #9fb0c8; }
+  </style>
+  <div id="root" data-composition-id="s02_problem" data-width="1920" data-height="1080">
+    <div id="s02_problem-wrap" style="position:absolute;inset:0">
+      <div id="s02_problem-drift" style="position:absolute;inset:0">
+
+      <div class="top" id="s02-top"><div class="eyebrow">설계변경의 파급</div><div class="h1" style="font-size:58px;margin-top:14px">동 하나가 움직이면, 단지 전체가 달라집니다</div></div>
+      <div class="grid3">
+        <div class="card" id="s02-c0"><div class="k"><span class="sun">☀</span>외벽 직사일조</div><div class="v red"><span id="s02-n0">0</span>분</div><div class="d">한 수광점의 동지 하루 일조가<br>가장 크게 줄어든 폭</div></div>
+        <div class="card" id="s02-c1"><div class="k"><span style="color:#5b6678">◼</span>새로 생긴 그늘</div><div class="v"><span id="s02-n1">0</span>m²</div><div class="d">변경안에서 음영 시간이 늘어난<br>단지 지표면 면적</div></div>
+        <div class="card" id="s02-c2"><div class="k"><span class="blue">↔</span>동간 이격</div><div class="v"><span id="s02-n2">0</span>m</div><div class="d">107동 ↔ 105동 채광창 벽면 거리<br><b class="red">기준 65.0 m 미달</b></div></div>
+      </div>
+      <div class="guess" id="s02-g"><s>도면과 경험으로 짐작</s><span>→</span><span class="blue" style="color:#6cb2ff">계산으로 확인</span></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const D = 16.596, L = [0.55,4.493,11.387];
+    tl.fromTo("#s02_problem-wrap", { opacity: 0 }, { opacity: 1, duration: 0.45, ease: "power2.out" }, 0);
+    tl.to("#s02_problem-wrap", { opacity: 0, duration: 0.4, ease: "power2.in" }, D - 0.42);
+    tl.fromTo("#s02_problem-drift", { scale: 1 }, { scale: 1.03, duration: D, ease: "none" }, 0);
+    const num = (sel, to, at, dur = 1.2, fmt = (v) => Math.round(v).toLocaleString("en-US")) => {
+      const o = { v: 0 }, el = document.querySelector(sel);
+      tl.fromTo(o, { v: 0 }, { v: to, duration: dur, ease: "power2.out", onUpdate: () => { el.textContent = fmt(o.v); } }, at);
+    };
+
+    tl.fromTo("#s02-top", { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 0.1);
+    [0, 1, 2].forEach((i) => tl.fromTo("#s02-c" + i, { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, L[1] + i * 0.55));
+    num("#s02-n0", -205, L[1] + 0.2, 1.3, (v) => "−" + Math.abs(Math.round(v)));
+    num("#s02-n1", 22560, L[1] + 0.75, 1.3);
+    num("#s02-n2", 63.4, L[1] + 1.3, 1.3, (v) => v.toFixed(1));
+    tl.fromTo("#s02-g", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, L[2]);
+    window.__timelines["s02_problem"] = tl;
+  </script>
+</template>

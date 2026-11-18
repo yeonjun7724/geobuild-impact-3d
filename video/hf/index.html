@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Pretendard"; src: url("assets/fonts/PretendardVariable.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #f3f6fa; }
+      #root { width: 100%; height: 100%; font-family: "Pretendard", sans-serif;
+              background: radial-gradient(1200px 700px at 85% -10%, #e3eefc 0%, rgba(227,238,252,0) 60%), radial-gradient(900px 600px at -5% 110%, #e8f3ee 0%, rgba(232,243,238,0) 60%), #f3f6fa; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="161.266" data-width="1920" data-height="1080">
+      <div id="s01_title" data-composition-id="s01_title" data-composition-src="compositions/s01_title.html" data-start="0" data-duration="9.587" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="s02_problem" data-composition-id="s02_problem" data-composition-src="compositions/s02_problem.html" data-start="9.587" data-duration="16.596" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="s03_flow" data-composition-id="s03_flow" data-composition-src="compositions/s03_flow.html" data-start="26.183" data-duration="13.362" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="s04_edit" data-composition-id="s04_edit" data-composition-src="compositions/s04_edit.html" data-start="39.545" data-duration="19.549" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="s05_engine" data-composition-id="s05_engine" data-composition-src="compositions/s05_engine.html" data-start="59.094" data-duration="23.466" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="s06_facade" data-composition-id="s06_facade" data-composition-src="compositions/s06_facade.html" data-start="82.56" data-duration="14.291" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="s07_shadow" data-composition-id="s07_shadow" data-composition-src="compositions/s07_shadow.html" data-start="96.851" data-duration="11.745" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="s08_verdict" data-composition-id="s08_verdict" data-composition-src="compositions/s08_verdict.html" data-start="108.596" data-duration="13.315" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="s09_report" data-composition-id="s09_report" data-composition-src="compositions/s09_report.html" data-start="121.911" data-duration="12.071" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="s10_verify" data-composition-id="s10_verify" data-composition-src="compositions/s10_verify.html" data-start="133.982" data-duration="16.284" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <div id="s11_end" data-composition-id="s11_end" data-composition-src="compositions/s11_end.html" data-start="150.266" data-duration="11" data-track-index="1" data-track-kind="graphics" data-width="1920" data-height="1080"></div>
+      <audio id="vo-s01_title-0" src="assets/vo/s01_title_0.wav" data-start="0.55" data-duration="3.995" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s01_title-1" src="assets/vo/s01_title_1.wav" data-start="4.865" data-duration="3.972" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s02_problem-0" src="assets/vo/s02_problem_0.wav" data-start="10.137" data-duration="3.623" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s02_problem-1" src="assets/vo/s02_problem_1.wav" data-start="14.08" data-duration="6.574" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s02_problem-2" src="assets/vo/s02_problem_2.wav" data-start="20.974" data-duration="4.459" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s03_flow-0" src="assets/vo/s03_flow_0.wav" data-start="26.733" data-duration="3.298" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s03_flow-1" src="assets/vo/s03_flow_1.wav" data-start="30.351" data-duration="8.444" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s04_edit-0" src="assets/vo/s04_edit_0.wav" data-start="40.095" data-duration="3.891" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s04_edit-1" src="assets/vo/s04_edit_1.wav" data-start="44.306" data-duration="7.491" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s04_edit-2" src="assets/vo/s04_edit_2.wav" data-start="52.117" data-duration="4.471" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s05_engine-0" src="assets/vo/s05_engine_0.wav" data-start="59.644" data-duration="3.206" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s05_engine-1" src="assets/vo/s05_engine_1.wav" data-start="63.17" data-duration="4.634" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s05_engine-2" src="assets/vo/s05_engine_2.wav" data-start="68.124" data-duration="6.282" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s05_engine-3" src="assets/vo/s05_engine_3.wav" data-start="74.726" data-duration="7.084" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s06_facade-0" src="assets/vo/s06_facade_0.wav" data-start="83.11" data-duration="6.434" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s06_facade-1" src="assets/vo/s06_facade_1.wav" data-start="89.864" data-duration="6.237" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s07_shadow-0" src="assets/vo/s07_shadow_0.wav" data-start="97.401" data-duration="3.298" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s07_shadow-1" src="assets/vo/s07_shadow_1.wav" data-start="101.019" data-duration="6.562" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s08_verdict-0" src="assets/vo/s08_verdict_0.wav" data-start="109.146" data-duration="5.191" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s08_verdict-1" src="assets/vo/s08_verdict_1.wav" data-start="114.657" data-duration="6.504" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s09_report-0" src="assets/vo/s09_report_0.wav" data-start="122.461" data-duration="5.156" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s09_report-1" src="assets/vo/s09_report_1.wav" data-start="127.937" data-duration="5.295" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s10_verify-0" src="assets/vo/s10_verify_0.wav" data-start="134.532" data-duration="3.728" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s10_verify-1" src="assets/vo/s10_verify_1.wav" data-start="138.58" data-duration="6.725" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s10_verify-2" src="assets/vo/s10_verify_2.wav" data-start="145.625" data-duration="3.891" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s11_end-0" src="assets/vo/s11_end_0.wav" data-start="150.816" data-duration="4.459" data-track-index="3" data-volume="1"></audio>
+      <audio id="vo-s11_end-1" src="assets/vo/s11_end_1.wav" data-start="155.595" data-duration="3.113" data-track-index="3" data-volume="1"></audio>
+    </div>
+    <script>
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>

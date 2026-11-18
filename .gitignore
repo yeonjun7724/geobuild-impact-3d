@@ -16,3 +16,16 @@ frontend/playwright-report/
 
 # local scratch scripts
 *.tmp.mjs
+
+# video build outputs (large)
+video/out/
+video/hf/assets/rec/
+video/hf/assets/vo/
+video/hf/renders/
+video/tts/out/
+video/capture/frames/
+video/hf/assets/fonts/
+video/hf/assets/pdf/
+video/hf/.hyperframes/
+video/post/fonts/
+video/post/*.wav
