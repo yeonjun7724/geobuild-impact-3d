@@ -59,7 +59,7 @@ export function SliderField({ label, value, min, max, step, unit, onChange, onCo
         <span className="label">{label}</span>
         <span className="flex items-center gap-1">
           <input aria-label={typeof label === "string" ? label : undefined} type="number" className="!h-6 w-[64px] text-right tnum" min={min} max={max} step={step} value={value}
-            onChange={(e) => onChange(Number(e.target.value))} onBlur={onCommit} onKeyDown={(e) => { if (e.key === "Enter") { onCommit?.(); e.currentTarget.blur(); } }} />
+            onChange={(e) => onChange(Number(e.target.value))} onBlur={onCommit} onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); /* blur commits once */ }} />
           {unit && <span className="w-5 text-[11px] text-muted">{unit}</span>}
         </span>
       </div>

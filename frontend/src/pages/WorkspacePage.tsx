@@ -85,25 +85,40 @@ export default function WorkspacePage() {
   const dirty = useMemo(() => sb ? sb.buildings.some((b) => b.kind === "MAIN" && drafts[b.id] && !same(drafts[b.id], b.transform)) : false, [sb, drafts]);
 
   /** Persist drafts that differ from the saved scenario (only changed buildings are PATCHed). */
-  const commit = useCallback(async (next: Drafts, record = true) => {
+  /* Saves are serialised through one promise chain and diffed against what the server last accepted, so a
+     slower, older request can never overwrite a newer edit (e.g. Enter+blur, fast keyboard nudges). */
+  const saveChain = useRef<Promise<void>>(Promise.resolve());
+  const savedRef = useRef<Drafts>({});
+  useEffect(() => {
+    if (!sb) return;
+    const d: Drafts = {};
+    for (const x of sb.buildings) if (x.kind === "MAIN") d[x.id] = { ...ZERO, ...x.transform };
+    if (!Object.keys(savedRef.current).length) savedRef.current = d;
+  }, [sb]);
+  const commit = useCallback((next: Drafts, record = true) => {
     if (!sb || !scB) return;
     if (scB.layout) { setMsg("변경안 B는 도면으로 입력되어 여기서 옮길 수 없습니다. 수정한 도면을 [도면 입력]에서 다시 올리세요."); return; }
-    if (record) { setPast((h) => [...h.slice(-49), drafts]); setFuture([]); }
+    if (record && JSON.stringify(next) !== JSON.stringify(drafts)) { setPast((h) => [...h.slice(-49), drafts]); setFuture([]); }
     setDrafts(next);
     setLive(null);
     runPreview(next);
-    const todo = sb.buildings.filter((b) => b.kind === "MAIN" && !same(next[b.id], b.transform));
-    if (!todo.length) return;
-    setSaving("saving");
-    try {
-      for (const b of todo) await api.patchBuilding(scB.id, b.id, clampT(next[b.id] ?? ZERO));
-      const [bScene] = await Promise.all([api.scene(id, "B")]);
-      setSb(bScene);
-      reload();
-      setSaving("saved");
-      const w = [...new Set(bScene.buildings.flatMap((x) => x.warnings))];
-      setMsg(w.length ? `⚠ ${w.join(" · ")}` : null);
-    } catch (e: any) { setSaving("error"); setMsg(e.message); }
+    saveChain.current = saveChain.current.then(async () => {
+      const todo = Object.keys(next).filter((bid) => !same(next[bid], savedRef.current[bid]));
+      if (!todo.length) return;
+      setSaving("saving");
+      try {
+        for (const bid of todo) {
+          await api.patchBuilding(scB.id, bid, clampT(next[bid] ?? ZERO));
+          savedRef.current = { ...savedRef.current, [bid]: clampT(next[bid] ?? ZERO) };
+        }
+        const bScene = await api.scene(id, "B");
+        setSb(bScene);
+        reload();
+        setSaving("saved");
+        const w = [...new Set(bScene.buildings.flatMap((x) => x.warnings))];
+        setMsg(w.length ? `⚠ ${w.join(" · ")}` : null);
+      } catch (e: any) { setSaving("error"); setMsg(e.message); }
+    });
   }, [sb, scB, drafts, id, reload, runPreview]);
 
   const setOne = (bid: string, t: Transform, record = true) => commit({ ...drafts, [bid]: clampT(t) }, record);
@@ -262,7 +277,7 @@ export default function WorkspacePage() {
             </div>
             <div className="mt-2 flex items-center justify-between text-[11px] text-muted">
               <span>기준안 A는 잠금 · 변경은 B에 즉시 저장{dirty ? " (저장 대기)" : ""}</span>
-              <button className="btn btn-sm btn-ghost" onClick={async () => { if (confirm("변경안 B를 기준안 A와 동일하게 초기화할까요? (기존 분석·보고서는 보존)")) { await api.resetB(id); const d = await loadScenes(); reload(); setPast([]); setFuture([]); runPreview(d); } }}>B 초기화</button>
+              <button className="btn btn-sm btn-ghost" onClick={async () => { if (confirm("변경안 B를 기준안 A와 동일하게 초기화할까요? (기존 분석·보고서는 보존)")) { await api.resetB(id); const d = await loadScenes(); savedRef.current = d; reload(); setPast([]); setFuture([]); runPreview(d); } }}>B 초기화</button>
             </div>
             <p className="mt-2 border-t border-line pt-2 text-[10.5px] leading-snug text-[#d9c08a]">⚠ {DISCLAIMER}</p>
           </Panel>
