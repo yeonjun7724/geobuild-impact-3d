@@ -241,6 +241,7 @@ export default function ComparePage({ captureMode = false }: { captureMode?: boo
           {tab === "S" && <SummaryPanel res={res} onGo={setTab} />}
           {tab === "L" && <LegalPanel res={res} projectId={id} onChanged={() => api.results(runId).then(setRes).catch((e) => setErr(e.message))} />}
           {tab === "A" && sm.U && <DwellingPanel u={sm.U} onBuilding={(b) => setSelBld(b)} />}
+          {tab === "A" && sm.NB && <NeighborPanel nb={sm.NB} />}
           {tab === "A" && <ReceiverPanel s={recSeries} id={selRec} sm={sm} />}
           {tab === "B" && <ShadowPanel sm={sm} cell={cell} live={metric === "live" ? liveStats : null} />}
           {tab === "C" && clr && <ClearPanel c={clr} />}
@@ -532,6 +533,23 @@ function DwellingPanel({ u, onBuilding }: { u: any; onBuilding: (b: string) => v
           {cell.cause_b && <div className="text-[11px] text-muted">변경안에서 햇빛을 가장 많이 가리는 건물: {cell.cause_b}동</div>}
         </div>)}
       <div className="mt-2 text-[10.5px] leading-snug text-muted">기준: {u.rule}. 측정점: {u.receiver}. 모서리 세대의 측면 창은 반영하지 않습니다.</div>
+    </Panel>
+  );
+}
+
+function NeighborPanel({ nb }: { nb: any }) {
+  return (
+    <Panel title="주변 기존 건물 일조" icon={<Sun size={14} />} collapsible defaultOpen={nb.n_buildings_affected > 0}>
+      <div className="mb-1.5 text-[11.5px] text-ink-2">검토 {nb.n_buildings}동 · 외벽 {nb.n_points}개 지점 · <b className={nb.n_points_newly_below ? "text-bad" : "text-good"}>새로 미달 {nb.n_points_newly_below}곳</b></div>
+      <div className="space-y-1" data-testid="neighbor-list">
+        {nb.buildings.slice(0, 10).map((g: any) => (
+          <div key={g.building_id} className={`card-2 p-2 text-[11.5px] ${g.n_newly_below ? "!border-bad/50" : ""}`}>
+            <div className="flex items-center gap-1.5"><b className="truncate text-ink">{g.name}</b><span className="text-muted">{g.building_id}</span>
+              <span className="ml-auto chip">{g.use ?? "용도 미상"}</span></div>
+            <div className="text-ink-2">{g.n_newly_below ? <span className="text-bad">새로 미달 {g.n_newly_below}곳 ({g.floors[0]}~{g.floors[1]}층 {g.facades.join("/")}면){Object.keys(g.causes).length ? ` · 원인 ${Object.keys(g.causes)[0]}동` : ""}</span> : "새로 미달 없음"} · 최대 일조 감소 {Math.round(g.max_loss_min)}분</div>
+          </div>))}
+      </div>
+      <div className="mt-1.5 text-[10.5px] text-muted">{nb.receiver}. 세대 위치를 알면 해당 세대 창 기준으로 다시 확인하세요.</div>
     </Panel>
   );
 }

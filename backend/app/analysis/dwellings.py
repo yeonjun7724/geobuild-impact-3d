@@ -141,3 +141,41 @@ def compare_dwellings(ra, rb, times_local, dt_min: float, changed: set[str]) -> 
         "by_building": sorted(by_b.values(), key=lambda g: g["building_id"]),
         "rows": rows,
     }
+
+
+def compare_neighbors(ra, rb, times_local, dt_min: float, attrs: dict, names: dict) -> dict:
+    """Facade points on surrounding (existing) buildings; A and B share the receivers (neighbours do not move)."""
+    ok_a, cont_a, tot_a, _ = reference(ra.sun, times_local, dt_min)
+    ok_b, cont_b, tot_b, _ = reference(rb.sun, times_local, dt_min)
+    by: dict[str, dict] = {}
+    for k, rid in enumerate(ra.receiver_ids):
+        bid = ra.building_ids[k]
+        a = attrs.get(bid, {})
+        g = by.setdefault(bid, {"building_id": bid, "name": names.get(bid, bid), "use": a.get("use"), "residential": bool(a.get("residential")),
+                                "use_known": bool(a.get("use_known")), "n_points": 0, "n_meet_a": 0, "n_newly_below": 0, "n_improved": 0,
+                                "floors": set(), "facades": set(), "max_loss_min": 0.0, "causes": {}})
+        g["n_points"] += 1
+        g["n_meet_a"] += int(ok_a[k])
+        loss = float(tot_a[k] - tot_b[k])
+        g["max_loss_min"] = max(g["max_loss_min"], loss)
+        if ok_a[k] and not ok_b[k]:
+            g["n_newly_below"] += 1
+            g["floors"].add(int(ra.floors[k]))
+            g["facades"].add(ra.facades[k])
+            blk = rb.blocker[k][(ra.sun[k] == 1) & (rb.sun[k] == 0)]
+            for c in blk:
+                if c >= 0:
+                    lab = rb.labels[c]
+                    g["causes"][lab] = g["causes"].get(lab, 0) + 1
+        elif not ok_a[k] and ok_b[k]:
+            g["n_improved"] += 1
+    out = []
+    for g in by.values():
+        fl = sorted(g["floors"])
+        out.append({**g, "floors": [fl[0], fl[-1]] if fl else None, "facades": sorted(g["facades"]),
+                    "causes": dict(sorted(g["causes"].items(), key=lambda kv: -kv[1])[:3])})
+    out.sort(key=lambda g: (-g["n_newly_below"], -g["max_loss_min"]))
+    return {"rule": RULE, "receiver": "주변 건물 모든 외벽, 층별 약 6 m 간격 지점 (세대 위치 미상)",
+            "n_buildings": len(out), "n_points": len(ra.receiver_ids),
+            "n_buildings_affected": sum(g["n_newly_below"] > 0 for g in out), "n_points_newly_below": sum(g["n_newly_below"] for g in out),
+            "buildings": out}

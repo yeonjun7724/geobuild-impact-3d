@@ -35,3 +35,17 @@ def test_reference_rule():
     ok, cont, tot, c2 = reference(s, times, 5.0)
     assert ok.tolist() == [True, False, True] and c2.tolist() == [True, False, False]
     assert tot.tolist() == [120.0, 120.0, 240.0]
+
+
+def test_neighbor_damage_counts():
+    from app.analysis.dwellings import compare_neighbors
+    times = [f"2026-12-22T{(480 + 5 * i + 2) // 60:02d}:{(480 + 5 * i + 2) % 60:02d}:30+09:00" for i in range(96)]
+    sa = np.zeros((2, 96), bool); sa[:, 24:60] = True             # 3 h continuous in A for both points
+    sb = sa.copy(); sb[0, 36:60] = False                           # point 0 keeps 1 h in B -> newly below
+    blk = np.full((2, 96), -1); blk[0, 36:60] = 0                   # blocked by label 0 = "105"
+    mk = lambda s: SimpleNamespace(sun=s, receiver_ids=["N001-F03-S0-01", "N001-F09-S0-01"], building_ids=["N001", "N001"],
+                                   floors=np.array([3, 9]), facades=["S", "S"], blocker=blk, labels=["105"])
+    out = compare_neighbors(mk(sa), mk(sb), times, 5.0, {"N001": {"residential": True, "use_known": True, "use": "공동주택"}}, {"N001": "OO아파트 201동"})
+    g = out["buildings"][0]
+    assert out["n_points_newly_below"] == 1 and g["n_newly_below"] == 1 and g["floors"] == [3, 3] and g["causes"] == {"105": 24}
+    assert g["max_loss_min"] == 120.0

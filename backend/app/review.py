@@ -229,6 +229,18 @@ def build_review(sm: dict, result_dir: Path, legal: dict | None = None) -> dict:
                           "reference": ref["rule"], "tab": "A"})
         if not ref["applicable"]:
             items[-1]["detail"] += " 분석 시간대가 08~16시를 덮지 않아 기준선 비교가 불완전합니다."
+    if "NB" in sm:
+        nb = sm["NB"]
+        hit = [g for g in nb["buildings"] if g["n_newly_below"]]
+        if hit:
+            det = "; ".join(f"{g['name']}({g['building_id']}) {g['n_newly_below']}개 지점" + (f" {g['floors'][0]}~{g['floors'][1]}층" if g["floors"] else "")
+                            + (f", 원인 {next(iter(g['causes']))}동" if g["causes"] else "") + ("" if g["use_known"] else " · 용도 미상") for g in hit[:4])
+            items.append({"key": "NB", "level": "red", "title": "주변 기존 건물 일조",
+                          "headline": f"주변 건물 {len(hit)}동에서 일조 기준에 새로 미달하는 외벽 지점 {nb['n_points_newly_below']}곳",
+                          "detail": det + ". 민원·분쟁 가능성이 있으므로 세대 위치를 확인해 정밀 검토하세요.", "reference": nb["rule"] + " · " + nb["receiver"], "tab": "A"})
+        else:
+            items.append({"key": "NB", "level": "green", "title": "주변 기존 건물 일조", "headline": f"검토한 주변 건물 {nb['n_buildings']}동에서 새로 미달하는 지점 없음",
+                          "detail": f"외벽 {nb['n_points']}개 지점 검토.", "reference": nb["rule"] + " · " + nb["receiver"], "tab": "A"})
     if "B" in sm:
         hit = [o for o in sm["B"].get("open_spaces", []) if o.get("n_cells") and o.get("mean_delta_min", 0) >= OPEN_SPACE_SHADE_MIN]
         if hit:

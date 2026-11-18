@@ -45,6 +45,18 @@ export default function LayoutPage() {
   const [pick, setPick] = useState<Pick>(null);
   const [cp, setCp] = useState<{ s1?: number[]; d1?: number[]; s2?: number[]; d2?: number[] }>({});
   const [saved, setSaved] = useState<any>(null);
+  const [ctxRes, setCtxRes] = useState<any>(null);
+  const [radius, setRadius] = useState(400);
+  const onContext = async (f: File) => {
+    setBusy("주변 건물 읽는 중…"); setErr(null);
+    try {
+      const fd = new FormData(); fd.append("file", f); fd.append("radius_m", String(radius));
+      const r = await fetch(`/api/projects/${id}/context-buildings`, { method: "POST", body: fd });
+      const j = await r.json();
+      if (!r.ok) throw new Error(typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail));
+      setCtxRes(j); api.scene(id, "A").then(setRef); reload();
+    } catch (e: any) { setErr(e.message); } finally { setBusy(null); }
+  };
 
   useEffect(() => { api.scene(id, "A").then(setRef).catch((e) => setErr(e.message)); }, [id]);
   const isImg = up && up.kind !== "DXF";
@@ -254,6 +266,21 @@ export default function LayoutPage() {
                 <button className="btn btn-sm w-full" onClick={() => nav(`/projects/${id}/analysis`)}>전후 계산으로 →</button></div>}
             </Panel>
           )}
+          <Panel title="주변 기존 건물 (실제 데이터)" icon={<MapPin size={14} />} collapsible defaultOpen={!p.site_meta?.context_source}>
+            <div className="text-[11.5px] leading-relaxed text-ink-2">
+              현재: {p.site_meta?.context_source ? <b className="text-ink">{p.site_meta.context_source.filename} · {Object.keys(p.site_meta.context_attrs ?? {}).length}동</b> : "예시 건물 5동 (가상)"}
+            </div>
+            <div className="mt-1 text-[10.5px] leading-snug text-muted">국가공간정보포털·V-World의 <b>GIS건물통합정보</b> SHP(.shp/.dbf/.shx/.prj를 zip으로 묶음) 또는 GeoJSON. 지상층수·높이·용도를 읽어 주변 공동주택의 일조 피해를 함께 검토합니다. 대지 안 건물은 제외됩니다.</div>
+            <label className="mt-2 flex items-center gap-2 text-[12px]"><span className="label">반경</span>
+              <select value={radius} onChange={(e) => setRadius(Number(e.target.value))} className="flex-1">{[200, 300, 400, 600, 800].map((r) => <option key={r} value={r}>{r} m</option>)}</select></label>
+            <label className="btn mt-2 w-full cursor-pointer" data-testid="context-input">
+              <FileUp size={14} />주변 건물 파일 선택 (zip · geojson)
+              <input type="file" accept=".zip,.geojson,.json" className="hidden" onChange={(e) => e.target.files?.[0] && onContext(e.target.files[0])} />
+            </label>
+            {ctxRes && <div className="mt-2 text-[11.5px] text-good">{ctxRes.accepted}동 반영 (공동주택 {ctxRes.n_residential}동, 용도 미상 {ctxRes.n_use_unknown}동) · 좌표계 {ctxRes.crs}
+              <div className="text-muted">속성: {Object.entries(ctxRes.fields).map(([k, v]) => `${k}=${v}`).join(", ")} · 제외: 반경 밖 {ctxRes.skipped.far}, 대지 안 {ctxRes.skipped.in_site}, 높이 없음 {ctxRes.skipped.no_height}</div>
+              {ctxRes.warnings?.map((w: string) => <div key={w} className="text-warn">{w}</div>)}</div>}
+          </Panel>
           {busy && <div className="flex items-center gap-2 text-[12px] text-muted"><Spinner />{busy}</div>}
           {err && <ErrorBox msg={err} />}
         </div>

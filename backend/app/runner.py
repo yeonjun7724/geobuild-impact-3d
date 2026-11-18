@@ -18,7 +18,8 @@ from .analysis import clearance as C
 from .analysis import qa as QA
 from .analysis.shadow import compare_shadow, compute_shadow, make_grid, snapshot_states
 from .analysis.solar import ELEVATION_FIELD, SOLAR_METHOD, instants, sample_window
-from .analysis.dwellings import compare_dwellings, make_dwellings
+from .scene.geometry import make_receivers
+from .analysis.dwellings import compare_dwellings, compare_neighbors, make_dwellings
 from .analysis.sunlight import compare_sunlight, compute_sunlight
 from .config import ALGORITHM_VERSION, DATA_DIR, ENGINE_NAME, ENGINE_VERSION, code_commit_hash
 from .db import (AnalysisRun, ClearancePair, Floor, Project, RaySample, SessionLocal, ShadowGridCell, WindowReceiver, utcnow)
@@ -245,6 +246,16 @@ def _execute(run_id: str, snap: dict, params: dict, atype: str, prog: Progress) 
                                    sun.times_local, sun.dt_min, changed)
             write_csv(out / "dwellings.csv", cu["rows"])
             summary["U"] = cu
+        # existing surrounding buildings: residential or use unknown (neighbours never move, so A and B share receivers)
+        cattrs = site.get("context_attrs") or {}
+        ctx = [b for b in A if b.kind == "CONTEXT" and (cattrs.get(b.id, {}).get("residential") or not cattrs.get(b.id, {}).get("use_known"))]
+        nrec = [r for b in ctx for r in make_receivers(b.id, b.footprint, b.footprint, b.base_z, b.floors, spacing=6.0)]
+        if nrec:
+            prog(36, "A. 주변 건물", f"주변 건물 {len(ctx)}동 외벽 {len(nrec)}개 지점")
+            cn = compare_neighbors(compute_sunlight(sA, sun, receivers=nrec), compute_sunlight(sB, sun, receivers=nrec),
+                                   sun.times_local, sun.dt_min, cattrs, {b.id: b.name for b in ctx})
+            write_csv(out / "neighbors.csv", cn["buildings"])
+            summary["NB"] = cn
         summary["timing_s"]["A"] = round(time.time() - t, 3)
         prog(38, "A. 직사일조 저장", "수광점 결과 DB 저장")
         with SessionLocal() as s:

@@ -239,6 +239,7 @@ def site_dict(s: Session, p: Project) -> dict:
                        "data_class": b.data_class} for b in blds],
         "open_spaces": [{"id": o.space_id, "name": o.name, "kind": o.kind, "polygon": o.polygon, "data_class": o.data_class} for o in oss],
         "site_rect": p.site_rect,
+        "context_attrs": (p.site_meta or {}).get("context_attrs") or {},
         "site_boundary": (p.site_meta or {}).get("site_boundary") or demo.demo_site_boundary(),
         "site_boundary_class": ("USER_UPLOADED (" + (p.site_meta or {}).get("site_boundary_source", "도면") + ")")
                                if (p.site_meta or {}).get("site_boundary") else "SYNTHETIC (가상 대지경계)",
@@ -375,6 +376,162 @@ def upload_buildings(s: Session, p: Project, raw: bytes, filename: str) -> Datas
     s.add(ProvenanceRecord(project_id=p.id, subject="buildings", data_class=USER_UPLOADED, source=f"사용자 업로드 GeoJSON {filename}",
                            note=f"CRS {crs.to_string()} → local ENU 변환"))
     return ds
+
+
+# ------------------------------------------------------------------------------------------------ surrounding buildings
+CTX_FIELDS = {
+    "floors": ["A26", "GRND_FLR", "GRO_FLO_CO", "지상층수", "FLOORS", "FLOOR", "grnd_flr", "ground_floor"],
+    "height": ["A16", "HEIGHT", "BLD_HGT", "높이", "HEIGHT_M", "height", "bld_hgt"],
+    "name": ["A24", "BLD_NM", "BULD_NM", "건물명", "NAME", "bld_nm", "buld_nm"],
+    "dong": ["A25", "DONG_NM", "동명", "dong_nm"],
+    "use": ["A9", "USABILITY", "MAIN_PURPS_NM", "주용도", "용도", "USE", "usability", "main_purps_nm"],
+}
+RESIDENTIAL_WORDS = ("아파트", "공동주택", "연립", "다세대", "다가구", "주택", "기숙사", "오피스텔")
+
+
+def _pick(props: dict, key: str):
+    low = {k.lower(): k for k in props}
+    for c in CTX_FIELDS[key]:
+        k = c if c in props else low.get(c.lower())
+        if k is not None and props[k] not in (None, "", " "):
+            return k, props[k]
+    return None, None
+
+
+def _read_context_features(raw: bytes, filename: str) -> tuple[list[tuple[dict, dict]], str, list[str]]:
+    """-> [(geometry geo_interface, properties)], crs string, warnings"""
+    import io
+    import zipfile
+    warns: list[str] = []
+    name = filename.lower()
+    if name.endswith((".geojson", ".json")):
+        gj = json.loads(raw.decode("utf-8"))
+        crs_name = (((gj.get("crs") or {}).get("properties") or {}).get("name"))
+        crs = PCRS.from_user_input(crs_name.replace("urn:ogc:def:crs:", "").replace("::", ":")).to_string() if crs_name else "EPSG:4326"
+        return [(f["geometry"], f.get("properties") or {}) for f in gj.get("features") or [] if f.get("geometry")], crs, warns
+    if not name.endswith(".zip"):
+        raise ServiceError("주변 건물은 SHP 묶음(.zip: .shp/.dbf/.shx/.prj) 또는 GeoJSON으로 올려 주세요")
+    import shapefile
+    z = zipfile.ZipFile(io.BytesIO(raw))
+    names = z.namelist()
+    shp = next((n for n in names if n.lower().endswith(".shp")), None)
+    if shp is None:
+        raise ServiceError("zip 안에 .shp 파일이 없음")
+    base = shp[:-4]
+    get = lambda ext: next((z.read(n) for n in names if n.lower() == (base + ext).lower()), None)  # noqa: E731
+    dbf, shx, prj, cpg = get(".dbf"), get(".shx"), get(".prj"), get(".cpg")
+    if dbf is None:
+        raise ServiceError(".dbf 파일이 없음 (속성: 층수·높이)")
+    enc = (cpg.decode("ascii", "ignore").strip() if cpg else "") or "cp949"
+    enc = {"UTF-8": "utf-8", "UTF8": "utf-8", "EUC-KR": "cp949", "MS949": "cp949", "949": "cp949"}.get(enc.upper(), enc)
+    try:
+        r = shapefile.Reader(shp=io.BytesIO(z.read(shp)), dbf=io.BytesIO(dbf), shx=io.BytesIO(shx) if shx else None, encoding=enc)
+        recs = [(sr.shape.__geo_interface__, sr.record.as_dict()) for sr in r.iterShapeRecords()]
+    except UnicodeDecodeError:
+        r = shapefile.Reader(shp=io.BytesIO(z.read(shp)), dbf=io.BytesIO(dbf), shx=io.BytesIO(shx) if shx else None, encoding="utf-8")
+        recs = [(sr.shape.__geo_interface__, sr.record.as_dict()) for sr in r.iterShapeRecords()]
+    if prj:
+        crs = PCRS.from_wkt(prj.decode("utf-8", "ignore")).to_string()
+    else:
+        crs = "EPSG:5186"
+        warns.append(".prj 없음 - GIS건물통합정보 기본 좌표계 EPSG:5186(중부원점)으로 가정")
+    return recs, crs, warns
+
+
+def import_context(s: Session, p: Project, raw: bytes, filename: str, radius_m: float = 400.0) -> dict:
+    """Replace the surrounding (CONTEXT) buildings with real ones (국토부 GIS건물통합정보 SHP or GeoJSON)."""
+    import hashlib
+    from shapely.geometry import shape as _shape
+    feats, crs, warns = _read_context_features(raw, filename)
+    if not feats:
+        raise ServiceError("건물 도형이 없음")
+    fr = frame_of(p)
+    site = Polygon((p.site_meta or {}).get("site_boundary") or demo.demo_site_boundary())
+    mains = [Polygon(b.footprint) for b in p.buildings if b.kind == "MAIN"]
+    rows, skipped, used_fields = [], {"far": 0, "in_site": 0, "no_height": 0, "invalid": 0}, {}
+    for geom, props in feats:
+        try:
+            g = _shape(geom)
+        except Exception:  # noqa: BLE001
+            skipped["invalid"] += 1
+            continue
+        parts = list(g.geoms) if g.geom_type == "MultiPolygon" else [g] if g.geom_type == "Polygon" else []
+        for part in parts:
+            xy = np.asarray(part.exterior.coords)[:, :2]
+            try:
+                enu = fr.crs_to_enu_xy(xy[:, 0], xy[:, 1], crs)
+                poly = Polygon(enu).buffer(0)
+                if poly.geom_type == "MultiPolygon":
+                    poly = max(poly.geoms, key=lambda q: q.area)
+                poly = Polygon(poly.exterior).simplify(0.2)
+            except Exception:  # noqa: BLE001
+                skipped["invalid"] += 1
+                continue
+            if poly.is_empty or poly.area < 15:
+                skipped["invalid"] += 1
+                continue
+            c = poly.centroid
+            if np.hypot(c.x, c.y) > radius_m:
+                skipped["far"] += 1
+                continue
+            if site.contains(c) or any(m.intersects(poly) for m in mains):
+                skipped["in_site"] += 1
+                continue
+            fk, floors = _pick(props, "floors")
+            hk, height = _pick(props, "height")
+            nk, name = _pick(props, "name")
+            dk, dong = _pick(props, "dong")
+            uk, use = _pick(props, "use")
+            for k, v in (("floors", fk), ("height", hk), ("name", nk), ("dong", dk), ("use", uk)):
+                if v:
+                    used_fields.setdefault(k, v)
+            try:
+                h = float(height) if height not in (None, "") else 0.0
+            except ValueError:
+                h = 0.0
+            try:
+                fl = int(float(floors)) if floors not in (None, "") else 0
+            except ValueError:
+                fl = 0
+            if h > 0:
+                fl_eff, hsrc = max(1, int(round((h - 1.2) / 2.9))), "height"
+            elif fl > 0:
+                fl_eff, hsrc = fl, "floors"
+            else:
+                skipped["no_height"] += 1
+                continue
+            label = " ".join(str(x).strip() for x in (name, dong) if x and str(x).strip()) or "주변 건물"
+            u = str(use or "").strip()
+            residential = any(w in (u + label) for w in RESIDENTIAL_WORDS)
+            rows.append({"name": label[:120], "floors": min(fl_eff, 80), "footprint": [[round(x, 3), round(y, 3)] for x, y in list(poly.exterior.coords)[:-1]],
+                         "use": u or None, "residential": residential, "use_known": bool(u), "height_src": hsrc, "height_m": h or None})
+    if not rows:
+        raise ServiceError(f"반경 {radius_m:.0f} m 안에 쓸 수 있는 건물이 없음 (제외: {skipped})")
+    rows.sort(key=lambda r: np.hypot(*Polygon(r["footprint"]).centroid.coords[0]))
+    path = save_upload(p.id, "context", filename, raw)
+    ds = Dataset(project_id=p.id, kind="CONTEXT", data_class=USER_UPLOADED, filename=filename, path=str(path),
+                 sha256=hashlib.sha256(raw).hexdigest(), meta={"crs": crs, "n_features": len(feats), "fields": used_fields, "radius_m": radius_m},
+                 qa={"warnings": warns, "skipped": skipped, "accepted": len(rows)}, status="WARN" if warns else "OK")
+    s.add(ds)
+    s.flush()
+    for b in s.scalars(select(Building).where(Building.project_id == p.id, Building.kind == "CONTEXT")):
+        s.delete(b)
+    attrs = {}
+    for i, r in enumerate(rows, start=1):
+        bid = f"N{i:03d}"
+        s.add(Building(project_id=p.id, building_id=bid, name=r["name"], kind="CONTEXT", floors=r["floors"], footprint=r["footprint"],
+                       data_class=USER_UPLOADED, source_dataset_id=ds.id))
+        attrs[bid] = {k: r[k] for k in ("use", "residential", "use_known", "height_src", "height_m", "name")}
+    p.site_meta = {**(p.site_meta or {}), "context_attrs": attrs, "context_source": {"filename": filename, "crs": crs, "fields": used_fields}}
+    for sc in p.scenarios:
+        sc.revision += 1
+    s.flush()
+    for sc in p.scenarios:
+        refresh_hash(s, sc)
+    s.add(ProvenanceRecord(project_id=p.id, subject="context_buildings", data_class=USER_UPLOADED, source=f"주변 건물 {filename}",
+                           note=f"CRS {crs} → local ENU, 반경 {radius_m:.0f} m, {len(rows)}동, 속성 {used_fields}"))
+    return {"dataset_id": ds.id, "accepted": len(rows), "skipped": skipped, "crs": crs, "fields": used_fields, "warnings": warns,
+            "n_residential": sum(r["residential"] for r in rows), "n_use_unknown": sum(not r["use_known"] for r in rows)}
 
 
 def save_upload(pid: str, kind: str, filename: str, data: bytes) -> Path:

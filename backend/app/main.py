@@ -330,6 +330,23 @@ def delete_layout(pid: str, code: str, s: Session = Depends(get_session)):
     return {"scenario": _scen_out(sc)}
 
 
+@app.post("/api/projects/{pid}/context-buildings")
+async def upload_context(pid: str, file: UploadFile = File(...), radius_m: float = Form(400.0), s: Session = Depends(get_session)):
+    """Surrounding buildings from 국토부 GIS건물통합정보 (SHP zip) or GeoJSON; replaces the example neighbours."""
+    p = _project(s, pid)
+    raw = await file.read()
+    if len(raw) > DRAWING_MAX_BYTES:
+        raise HTTPException(413, "80 MB 이하로 잘라서 올려 주세요 (시군구 단위 파일은 대상지 주변만 추출 권장)")
+    if not (50 <= radius_m <= 1500):
+        raise HTTPException(422, "반경은 50~1500 m")
+    try:
+        out = services.import_context(s, p, raw, file.filename or "context.zip", radius_m)
+        s.commit()
+    except services.ServiceError as exc:
+        _bad(exc)
+    return out
+
+
 @app.get("/api/legal/options")
 def legal_options():
     from . import legal
@@ -805,7 +822,7 @@ def clearance(rid: str, s: Session = Depends(get_session)):
     return sm["C"]
 
 
-RUN_FILES = ["analysis_summary.json", "quality_check.json", "dwellings.csv", "sunlight_receivers.csv", "sunlight_per_floor.csv", "sunlight_per_building.csv",
+RUN_FILES = ["analysis_summary.json", "quality_check.json", "dwellings.csv", "neighbors.csv", "sunlight_receivers.csv", "sunlight_per_floor.csv", "sunlight_per_building.csv",
              "shadow_grid_cells.csv", "shadow_grid_changed.geojson", "shadow_area_curve.csv", "clearance_pairs.csv",
              "clearance_facade_normals.csv", "clearance_boundary.csv", "buildings_A.geojson", "buildings_B.geojson", "sensitivity.csv",
              "scene_snapshot.json"]
