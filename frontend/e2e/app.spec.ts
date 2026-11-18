@@ -53,18 +53,26 @@ test("GeoBuild Impact 3D end-to-end", async ({ page, request }) => {
   await page.getByTestId("open-compare").click();
   await page.waitForURL(/compare\//);
   const runId = page.url().split("/").pop()!;
-  await expect(page.getByTestId("summary-kpis")).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByTestId("review-verdict")).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByTestId("review-items")).toBeVisible();
   await page.waitForTimeout(8000);
   await page.screenshot({ path: `${SHOTS}/05_compare_summary.png` });
-  await page.getByRole("button", { name: "A 일조" }).click();
+  const legalTab = page.getByRole("button", { name: "법정", exact: true });
+  if (await legalTab.isEnabled()) {
+    await legalTab.click();
+    await expect(page.getByTestId("legal-findings")).toBeVisible({ timeout: 30_000 });
+    await page.waitForTimeout(5000);
+    await page.screenshot({ path: `${SHOTS}/05b_compare_legal.png` });
+  }
+  await page.getByRole("button", { name: "A 일조", exact: true }).click();
   await page.getByTestId("toggle-tables").click();
-  await page.locator("table.tbl tbody tr").first().click();
+  await page.locator("table.tbl tbody tr", { hasText: /\d+-F\d{2}-/ }).first().click(); // a receiver row (not the per-dwelling grid)
   await expect(page.getByTestId("receiver-detail")).toBeVisible({ timeout: 30_000 });
   await page.getByTestId("toggle-tables").click();
-  await page.getByRole("button", { name: "오버레이" }).click();
+  await page.getByRole("button", { name: "오버레이", exact: true }).click();
   await page.waitForTimeout(8000);
   await page.screenshot({ path: `${SHOTS}/06_compare_A_facade.png` });
-  await page.getByRole("button", { name: "B 그림자" }).click();
+  await page.getByRole("button", { name: "B 그림자", exact: true }).click();
   await expect(page.getByTestId("live-shadow")).toBeVisible({ timeout: 60_000 });
   const before = await page.getByTestId("live-shadow").textContent();
   await page.getByRole("button", { name: "30분 앞으로" }).click();
@@ -72,14 +80,14 @@ test("GeoBuild Impact 3D end-to-end", async ({ page, request }) => {
   await expect.poll(async () => page.getByTestId("live-shadow").textContent(), { timeout: 15_000 }).not.toBe(before);
   await page.waitForTimeout(6000);
   await page.screenshot({ path: `${SHOTS}/07_compare_B_timelapse.png` });
-  await page.getByRole("button", { name: "C 이격" }).click();
-  await page.getByRole("button", { name: "분할" }).click();
+  await page.getByRole("button", { name: "C 이격", exact: true }).click();
+  await page.getByRole("button", { name: "분할", exact: true }).click();
   await page.waitForTimeout(7000);
   await page.screenshot({ path: `${SHOTS}/08_compare_C_clearance.png` });
 
   // 6. persistence across reload
   await page.reload();
-  await expect(page.getByTestId("summary-kpis")).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId("review-verdict")).toBeVisible({ timeout: 60_000 });
 
   // 7. report generation + downloads
   await page.getByTestId("go-report").click();

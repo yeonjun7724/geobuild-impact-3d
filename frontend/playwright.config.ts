@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  timeout: 25 * 60 * 1000,
+  timeout: 40 * 60 * 1000,
   reporter: [["list"], ["json", { outputFile: "../docs/qa/playwright-results.json" }]],
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:5173",

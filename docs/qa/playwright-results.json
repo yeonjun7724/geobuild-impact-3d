@@ -35,7 +35,7 @@
         "testMatch": [
           "**/*.@(spec|test).?(c|m)[jt]s?(x)"
         ],
-        "timeout": 900000
+        "timeout": 2400000
       }
     ],
     "filteredProjects": [
@@ -53,7 +53,7 @@
         "snapshotDir": "c:\\github\\lh-3d-poc_261118\\frontend\\e2e",
         "testIgnore": [],
         "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
-        "timeout": 900000,
+        "timeout": 2400000,
         "use": {
           "baseURL": "http://127.0.0.1:5173",
           "viewport": {
@@ -109,11 +109,11 @@
       "specs": [
         {
           "title": "GeoBuild Impact 3D end-to-end",
-          "ok": false,
+          "ok": true,
           "tags": [],
           "tests": [
             {
-              "timeout": 900000,
+              "timeout": 2400000,
               "annotations": [],
               "expectedStatus": "passed",
               "projectId": "",
@@ -122,44 +122,25 @@
                 {
                   "workerIndex": 0,
                   "parallelIndex": 0,
-                  "status": "timedOut",
-                  "duration": 900223,
-                  "error": {
-                    "message": "\u001b[31mTest timeout of 900000ms exceeded.\u001b[39m",
-                    "stack": "\u001b[31mTest timeout of 900000ms exceeded.\u001b[39m"
-                  },
-                  "errors": [
-                    {
-                      "message": "\u001b[31mTest timeout of 900000ms exceeded.\u001b[39m"
-                    },
-                    {
-                      "location": {
-                        "file": "c:\\github\\lh-3d-poc_261118\\frontend\\e2e\\app.spec.ts",
-                        "column": 14,
-                        "line": 78
-                      },
-                      "message": "Error: page.screenshot: Test timeout of 900000ms exceeded.\nCall log:\n\u001b[2m  - taking page screenshot\u001b[22m\n\u001b[2m  - waiting for fonts to load...\u001b[22m\n\u001b[2m  - fonts loaded\u001b[22m\n\n\n  76 |   await page.getByRole(\"button\", { name: \"분할\" }).click();\n  77 |   await page.waitForTimeout(7000);\n> 78 |   await page.screenshot({ path: `${SHOTS}/08_compare_C_clearance.png` });\n     |              ^\n  79 |\n  80 |   // 6. persistence across reload\n  81 |   await page.reload();\n    at c:\\github\\lh-3d-poc_261118\\frontend\\e2e\\app.spec.ts:78:14"
-                    }
-                  ],
+                  "status": "passed",
+                  "duration": 729429,
+                  "errors": [],
                   "stdout": [
                     {
                       "text": "job backend: 작업 백엔드 rq\n"
+                    },
+                    {
+                      "text": "E2E OK project=07d8d5ed3ae3 run=5a9622c4543e pdf_bytes=1259255 zip_bytes=3090786\n"
                     }
                   ],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-11-18T06:26:24.626Z",
+                  "startTime": "2026-11-18T10:29:53.054Z",
                   "annotations": [],
-                  "attachments": [
-                    {
-                      "name": "error-context",
-                      "contentType": "text/markdown",
-                      "path": "c:\\github\\lh-3d-poc_261118\\frontend\\test-results\\app-GeoBuild-Impact-3D-end-to-end\\error-context.md"
-                    }
-                  ]
+                  "attachments": []
                 }
               ],
-              "status": "unexpected"
+              "status": "expected"
             }
           ],
           "id": "c31ff144dc4fee3acd0a-7434b7a323d1a72d2983",
@@ -172,11 +153,11 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-11-18T06:26:23.702Z",
-    "duration": 902307.06,
-    "expected": 0,
+    "startTime": "2026-11-18T10:29:52.111Z",
+    "duration": 730832.611,
+    "expected": 1,
     "skipped": 0,
-    "unexpected": 1,
+    "unexpected": 0,
     "flaky": 0
   }
 }
