@@ -1,0 +1,89 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.13, pytest-9.2.0, pluggy-1.7.0 -- C:\github\lh-3d-poc_261118\backend\.venv\Scripts\python.exe
+rootdir: C:\github\lh-3d-poc_261118\backend
+configfile: pyproject.toml
+plugins: anyio-4.16.0, dash-4.5.0, platformdirs-4.14.7
+collecting ... collected 66 items
+
+tests/test_analysis_scenarios.py::test_identical_scenarios_give_zero_deltas_A_B_C PASSED [  1%]
+tests/test_analysis_scenarios.py::test_tall_building_shades_low_building_south_facade_at_noon PASSED [  3%]
+tests/test_analysis_scenarios.py::test_moving_tall_building_away_restores_sun_and_ids_are_stable PASSED [  4%]
+tests/test_analysis_scenarios.py::test_height_increase_reduces_sun_and_adds_receivers PASSED [  6%]
+tests/test_analysis_scenarios.py::test_rotation_changes_mesh_and_results PASSED [  7%]
+tests/test_analysis_scenarios.py::test_below_horizon_intervals_are_zero_sun PASSED [  9%]
+tests/test_analysis_scenarios.py::test_time_step_sensitivity_recorded PASSED [ 10%]
+tests/test_analysis_scenarios.py::test_known_rectangle_distance_and_nearest_points PASSED [ 12%]
+tests/test_analysis_scenarios.py::test_contact_and_overlap_are_zero_never_negative PASSED [ 13%]
+tests/test_analysis_scenarios.py::test_facade_normal_distance_and_no_intersection PASSED [ 15%]
+tests/test_analysis_scenarios.py::test_clearance_delta_when_moved PASSED [ 16%]
+tests/test_analysis_scenarios.py::test_footprint_validation_errors PASSED [ 18%]
+tests/test_analysis_scenarios.py::test_receivers_keep_ids_under_rigid_transform PASSED [ 19%]
+tests/test_api_e2e.py::test_health PASSED                                [ 21%]
+tests/test_api_e2e.py::test_project_badges_mark_synthetic PASSED         [ 22%]
+tests/test_api_e2e.py::test_scene_and_ground_mesh_shared PASSED          [ 24%]
+tests/test_api_e2e.py::test_baseline_locked_and_variant_editable PASSED  [ 25%]
+tests/test_api_e2e.py::test_report_refused_without_successful_run PASSED [ 27%]
+tests/test_api_e2e.py::test_full_run_report_and_downloads PASSED         [ 28%]
+tests/test_api_e2e.py::test_persistence_across_new_client PASSED         [ 30%]
+tests/test_api_e2e.py::test_terrain_upload_valid_and_invalid PASSED      [ 31%]
+tests/test_api_e2e.py::test_buildings_geojson_upload_validation PASSED   [ 33%]
+tests/test_fullscene_crosscheck.py::test_full_scene_receiver_and_ground_rays_agree PASSED [ 34%]
+tests/test_independent_solar.py::test_pvlib_matches_independent_noaa_over_a_year PASSED [ 36%]
+tests/test_independent_solar.py::test_solstice_day_noaa_vs_analysis_window PASSED [ 37%]
+tests/test_raycast_analytic.py::test_pole_shadow_matches_H_over_tan_alpha[29.0-180.0] PASSED [ 39%]
+tests/test_raycast_analytic.py::test_pole_shadow_matches_H_over_tan_alpha[15.0-150.0] PASSED [ 40%]
+tests/test_raycast_analytic.py::test_pole_shadow_matches_H_over_tan_alpha[8.0-230.0] PASSED [ 42%]
+tests/test_raycast_analytic.py::test_pole_shadow_matches_H_over_tan_alpha[45.0-200.0] PASSED [ 43%]
+tests/test_raycast_analytic.py::test_box_shadow_area_on_flat_ground PASSED [ 45%]
+tests/test_raycast_analytic.py::test_open3d_agrees_with_independent_engine PASSED [ 46%]
+tests/test_raycast_analytic.py::test_self_intersection_offset_prevents_wall_self_hit PASSED [ 48%]
+tests/test_review_regressions.py::test_pad_stays_flat_where_dem_has_nodata PASSED [ 50%]
+tests/test_review_regressions.py::test_invalid_analysis_conditions_rejected_upfront[body0] PASSED [ 51%]
+tests/test_review_regressions.py::test_invalid_analysis_conditions_rejected_upfront[body1] PASSED [ 53%]
+tests/test_review_regressions.py::test_invalid_analysis_conditions_rejected_upfront[body2] PASSED [ 54%]
+tests/test_review_regressions.py::test_invalid_analysis_conditions_rejected_upfront[body3] PASSED [ 56%]
+tests/test_review_regressions.py::test_invalid_analysis_conditions_rejected_upfront[body4] PASSED [ 57%]
+tests/test_review_regressions.py::test_courtyard_hole_rejected_not_silently_filled PASSED [ 59%]
+tests/test_review_regressions.py::test_building_id_and_floor_validation[feats0-1~32\uc790] PASSED [ 60%]
+tests/test_review_regressions.py::test_building_id_and_floor_validation[feats1-\uc911\ubcf5] PASSED [ 62%]
+tests/test_review_regressions.py::test_building_id_and_floor_validation[feats2-\ucda9\ub3cc] PASSED [ 63%]
+tests/test_review_regressions.py::test_building_id_and_floor_validation[feats3-\ubc94\uc704] PASSED [ 65%]
+tests/test_review_regressions.py::test_upload_filename_is_sanitised_and_never_overwrites PASSED [ 66%]
+tests/test_review_regressions.py::test_stale_jobs_are_reported_as_failed PASSED [ 68%]
+tests/test_review_regressions.py::test_large_upload_is_clipped_with_provenance PASSED [ 69%]
+tests/test_review_regressions.py::test_offset_follows_analysis_targets_not_terrain_extent PASSED [ 71%]
+tests/test_review_regressions.py::test_significant_loss_counts_all_receivers_and_c_without_pairs_reports PASSED [ 72%]
+tests/test_solar_geo.py::test_sun_vector_cardinal_directions PASSED      [ 74%]
+tests/test_solar_geo.py::test_winter_solstice_noon_sun_is_south_and_low PASSED [ 75%]
+tests/test_solar_geo.py::test_kst_to_utc_same_instant_for_cesium PASSED  [ 77%]
+tests/test_solar_geo.py::test_midpoint_sampling_rule PASSED              [ 78%]
+tests/test_solar_geo.py::test_invalid_timezone_and_window PASSED         [ 80%]
+tests/test_solar_geo.py::test_enu_ecef_geodetic_roundtrip PASSED         [ 81%]
+tests/test_solar_geo.py::test_enu_matches_projected_crs_distances PASSED [ 83%]
+tests/test_solar_geo.py::test_cesium_model_matrix_maps_enu_origin_to_ecef PASSED [ 84%]
+tests/test_terrain.py::test_synthetic_dem_is_labelled_and_30m PASSED     [ 86%]
+tests/test_terrain.py::test_uploaded_dem_without_vertical_datum_is_unresolved PASSED [ 87%]
+tests/test_terrain.py::test_missing_crs_is_rejected PASSED               [ 89%]
+tests/test_terrain.py::test_all_nodata_rejected_and_partial_nodata_warned PASSED [ 90%]
+tests/test_terrain.py::test_dsm_hint_flags_double_modelling PASSED       [ 92%]
+tests/test_terrain.py::test_geographic_dem_reports_metre_cell_size PASSED [ 93%]
+tests/test_terrain.py::test_sampler_outside_coverage_is_nan PASSED       [ 95%]
+tests/test_terrain.py::test_pad_joint_and_horizon_qa PASSED              [ 96%]
+tests/test_terrain.py::test_clip_large_dem_keeps_grid_and_provenance PASSED [ 98%]
+tests/test_terrain.py::test_srtm_flagged_as_surface_model_and_region_choice PASSED [100%]
+
+============================== warnings summary ===============================
+.venv\Lib\site-packages\dash\testing\plugin.py:104
+  C:\github\lh-3d-poc_261118\backend\.venv\Lib\site-packages\dash\testing\plugin.py:104: PytestRemovedIn10Warning: The hookimpl pytest_addhooks uses old-style configuration options (marks or attributes).
+  Please use the pytest.hookimpl(tryfirst=True) decorator instead
+   to configure the hooks.
+   See https://docs.pytest.org/en/latest/deprecations.html#configuring-hook-specs-impls-using-markers
+    @pytest.mark.tryfirst
+
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  C:\github\lh-3d-poc_261118\backend\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+--- generated xml file: C:\github\lh-3d-poc_261118\docs\qa\pytest-junit.xml ---
+================= 66 passed, 2 warnings in 159.97s (0:02:39) ==================

@@ -1,0 +1,20 @@
+PASS 치명 C: A==A 이격 delta 0 | {"n_pairs": 21}
+PASS 치명 A: A==B(동일 입력) 직사일조 delta 0 | {"n_receivers": 2698, "n_decreased": 0, "n_increased": 0}
+PASS 치명 A: 수광점 자가교차 방지 offset | {"n_rays": 1349, "offset_m": 0.048, "self_hits_eps0": 1217, "self_hits_managed": 0, "sun_time_index": 54}
+PASS 치명 A: Open3D vs 독립 Möller–Trumbore 교차검증(건물 메쉬) | {"n_rays": 600, "hit_agreement_ratio": 1.0, "label_agreement_ratio": 1.0, "n_disagree": 0, "engines": ["open3d.t.geometry.RaycastingScene", "numpy Möller–Trumbore (reference)"]}
+PASS 치명 B: A==B(동일 입력) 신규음영·해소 면적 0 | {"max_new": 0.0, "max_relieved": 0.0}
+PASS 치명 B: A/B 공통 분모(유효격자) 일치 | {"cells": 20742, "valid_area_m2": 82968.0}
+PASS 치명 해석해: 기둥 그림자 L=H/tan(α) (정오) | {"height_m": 30.0, "sun_elevation_deg": 28.591, "sun_azimuth_deg": 171.8088, "analytic_tip_m": 55.55, "raycast_tip_m": 55.54, "abs_error_m": 0.01, "shadow_azimuth_deg": 351.809, "engine": "open3d.t.geometry.RaycastingScene"}
+PASS 치명 그림자 방향: 북반구 겨울 정오 그림자는 북쪽(방위 0°±25°) | {"shadow_azimuth_deg": 351.809}
+PASS 치명 좌표 ENU↔ECEF↔WGS84 round-trip | {"max_error_geodetic_roundtrip_m": 1.4844658835500013e-09, "max_error_ecef_roundtrip_m": 1.9664092576476833e-10, "n_points": 6}
+PASS 치명 태양벡터 단위길이·정오 남중 방위 | {"max_norm_error": 2.220446049250313e-16, "noon_azimuth_deg": 171.80877240907364, "noon_elevation_deg": 28.59101717545224}
+PASS 참고 수직기준 상태 기록 | {"vertical_datum": "SYNTHETIC_UNIFIED (가상 통일기준)", "status": "SYNTHETIC_UNIFIED"}
+PASS 참고 단지 접합부 경사 QA (≤20°) | {"max_deg": 3.53428494371341}
+FAIL 참고 분석영역 밖 차폐 경고 | {"region_edge_max_elevation_angle_deg": 1.467, "interior_terrain_max_elevation_angle_deg": 2.62, "min_sun_elevation_in_window_deg": 2.526, "outside_region_obstruction_possible": true, "note": "모델 경계 밖 지형·건물은 미반영. 경계 고도각이 최소 태양고도에 
+{"case": "기준(Δt=5분, 계획지반 가정)", "A_mean_total_min_a": 212.304, "A_mean_total_min_b": 202.118, "A_n_decreased": 673, "A_delta_total_min_min": -205.0, "B_mean_shade_min_a": 195.042, "B_mean_shade_min_b": 198.106, "B_max_new_shade_area_m2": 3868.0, "B_area_more_shade_m2": 22872.0}
+{"case": "시간간격 Δt=1분", "A_mean_total_min_a": 212.187, "A_mean_total_min_b": 202.149, "A_n_decreased": 686, "A_delta_total_min_min": -204.0, "B_mean_shade_min_a": 195.028, "B_mean_shade_min_b": 198.08, "B_max_new_shade_area_m2": 3888.0, "B_area_more_shade_m2": 24328.0}
+{"case": "가상 계획지반고 -3 m", "A_mean_total_min_a": 212.298, "A_mean_total_min_b": 202.113, "A_n_decreased": 673, "A_delta_total_min_min": -205.0, "B_mean_shade_min_a": 198.192, "B_mean_shade_min_b": 201.255, "B_max_new_shade_area_m2": 3868.0, "B_area_more_shade_m2": 22872.0}
+{"case": "가상 계획지반고 -1 m", "A_mean_total_min_a": 212.302, "A_mean_total_min_b": 202.116, "A_n_decreased": 673, "A_delta_total_min_min": -205.0, "B_mean_shade_min_a": 195.908, "B_mean_shade_min_b": 198.971, "B_max_new_shade_area_m2": 3868.0, "B_area_more_shade_m2": 22872.0}
+{"case": "가상 계획지반고 +1 m", "A_mean_total_min_a": 212.307, "A_mean_total_min_b": 202.122, "A_n_decreased": 673, "A_delta_total_min_min": -205.0, "B_mean_shade_min_a": 194.166, "B_mean_shade_min_b": 197.23, "B_max_new_shade_area_m2": 3868.0, "B_area_more_shade_m2": 22872.0}
+{"case": "가상 계획지반고 +3 m", "A_mean_total_min_a": 212.311, "A_mean_total_min_b": 202.126, "A_n_decreased": 673, "A_delta_total_min_min": -205.0, "B_mean_shade_min_a": 192.427, "B_mean_shade_min_b": 195.491, "B_max_new_shade_area_m2": 3868.0, "B_area_more_shade_m2": 22872.0}
+{"case": "변경 주동 +0.5 m 동쪽 미세이동", "A_mean_total_min_a": 212.304, "A_mean_total_min_b": 202.039, "A_n_decreased": 674, "A_delta_total_min_min": -205.0, "B_mean_shade_min_a": 195.065, "B_mean_shade_min_b": 198.139, "B_max_new_shade_area_m2": 3880.0, "B_area_more_shade_m2": 22740.0}

@@ -1,0 +1,51 @@
+# GeoBuild Impact 3D - one-command stack:  docker compose up --build
+# Redis: by default the Railway-hosted Redis given in backend/.env (REDIS_URL).
+#        For a fully local stack:  REDIS_URL=redis://redis:6379/0 docker compose --profile local-redis up --build
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment: { POSTGRES_USER: geobuild, POSTGRES_PASSWORD: geobuild, POSTGRES_DB: geobuild }
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U geobuild"], interval: 5s, retries: 20 }
+
+  redis:
+    image: redis:7.4-alpine
+    profiles: ["local-redis"]
+
+  api:
+    build: ./backend
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg2://geobuild:geobuild@postgres:5432/geobuild
+      REDIS_URL: ${REDIS_URL:-}
+      JOB_BACKEND: rq
+      FRONTEND_URL: http://frontend
+      GEOBUILD_DATA_DIR: /data
+    volumes: [geodata:/data]
+    depends_on: { postgres: { condition: service_healthy } }
+    ports: ["8000:8000"]
+
+  worker:
+    build: ./backend
+    command: ["python", "-m", "app.worker"]
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+psycopg2://geobuild:geobuild@postgres:5432/geobuild
+      REDIS_URL: ${REDIS_URL:-}
+      FRONTEND_URL: http://frontend
+      GEOBUILD_DATA_DIR: /data
+    volumes: [geodata:/data]
+    depends_on: { postgres: { condition: service_healthy } }
+
+  frontend:
+    build: ./frontend
+    depends_on: [api]
+    ports: ["5173:80"]
+
+volumes:
+  pgdata:
+  geodata:

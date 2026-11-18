@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ meta.title }} · {{ meta.run_id }}</title>
+<style>
+:root{--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;--line:#e1e0d9;--axis:#c3c2b7;--a:#2a78d6;--b:#eb6834;--bad:#c0392b;--good:#1c5cab;--warnbg:#fff6e0;--plane:#f9f9f7;--accent:#0d366b}
+@page{size:A4;margin:16mm 14mm}
+*{box-sizing:border-box}
+html{background:#e9e8e3}
+body{font-family:"Noto Sans KR","Noto Sans CJK KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif;color:var(--ink);font-size:9.6pt;line-height:1.55;margin:0;background:#fff;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;word-break:keep-all}
+main{max-width:182mm;margin:0 auto;padding:10mm 0;background:#fff}
+@media screen{main{padding:14mm 16mm;margin:16px auto;box-shadow:0 1px 6px rgba(0,0,0,.12)} .screenbar{position:sticky;top:0;background:#0d366b;color:#fff;padding:8px 16px;font-size:13px;z-index:5;display:flex;gap:16px;justify-content:space-between}}
+@media print{.screenbar{display:none} main{padding:0;max-width:none}}
+h1{font-size:21pt;line-height:1.3;margin:0 0 6mm;color:var(--accent)}
+h2{font-size:14pt;color:var(--accent);border-bottom:1.5pt solid var(--accent);padding-bottom:1.5mm;margin:0 0 4mm;break-after:avoid}
+h3{font-size:11pt;margin:5mm 0 2mm;color:var(--ink);break-after:avoid}
+h4{font-size:9.8pt;margin:3mm 0 1.5mm;break-after:avoid}
+section.chapter{break-before:page}
+p{margin:0 0 2.2mm}
+table{width:100%;border-collapse:collapse;margin:2mm 0 4mm;font-size:8.2pt;font-variant-numeric:tabular-nums}
+th,td{border-bottom:0.5pt solid var(--line);padding:1.2mm 1.6mm;text-align:left;vertical-align:top}
+th{background:#f2f1ec;font-weight:700;color:var(--ink2)}
+td.r,th.r{text-align:right}
+thead{display:table-header-group}
+tr{break-inside:avoid}
+caption{caption-side:top;text-align:left;font-weight:700;font-size:8.6pt;color:var(--ink2);padding-bottom:1mm}
+figure{margin:3mm 0 5mm;break-inside:avoid;text-align:center}
+figure svg{max-width:100%;height:auto}
+figcaption{font-size:8.2pt;color:var(--ink2);margin-top:1.2mm;text-align:left}
+.badge{display:inline-block;border:0.6pt solid currentColor;border-radius:2pt;padding:0 1.4mm;font-size:7.6pt;font-weight:700;margin-right:1mm}
+.b-syn{color:#a15c00}.b-real{color:#0b6b48}.b-der{color:#4a3aa7}.b-warn{color:#b03a2e}.b-up{color:#1c5cab}
+.note{background:var(--plane);border-left:2pt solid var(--axis);padding:2mm 3mm;margin:2mm 0 4mm;font-size:8.6pt;color:var(--ink2)}
+.warn{background:var(--warnbg);border-left:2pt solid #eda100;padding:2mm 3mm;margin:2mm 0 4mm;font-size:8.6pt}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:2.5mm;margin:3mm 0 4mm}
+.kpi{border:0.6pt solid var(--line);border-radius:2pt;padding:2.4mm 3mm;break-inside:avoid}
+.kpi .l{font-size:7.6pt;color:var(--ink2)}.kpi .v{font-size:14pt;font-weight:700;font-variant-numeric:tabular-nums}.kpi .s{font-size:7.4pt;color:var(--muted)}
+.neg{color:var(--bad)}.pos{color:var(--good)}
+.pass{color:#0b6b48;font-weight:700}.fail{color:var(--bad);font-weight:700}
+.cover{height:257mm;display:flex;flex-direction:column;justify-content:space-between;break-after:page}
+.cover .brand{font-weight:700;letter-spacing:.12em;color:var(--accent);font-size:10pt}
+.cover .stamp{border:1.5pt solid var(--bad);color:var(--bad);font-weight:800;display:inline-block;padding:2mm 4mm;font-size:12pt;transform:rotate(-2deg)}
+.cover dl{display:grid;grid-template-columns:38mm 1fr;gap:1.6mm 4mm;font-size:9.6pt;margin:0}
+.cover dt{color:var(--ink2)}.cover dd{margin:0;font-weight:500}
+.toc{break-after:page}
+.toc ol{list-style:none;padding:0;margin:0}
+.toc li{display:flex;justify-content:space-between;border-bottom:0.4pt dotted var(--axis);padding:1.6mm 0;font-size:10pt}
+ul.tight{margin:0 0 3mm;padding-left:5mm}ul.tight li{margin-bottom:1mm}
+.mono{font-family:Consolas,"D2Coding",monospace;font-size:7.6pt;word-break:break-all}
+.small{font-size:7.8pt;color:var(--ink2)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:4mm}
+</style>
+</head>
+<body>
+{% set ns = namespace(f=0, t=0) %}
+{% macro fig(svg, cap) -%}{% set ns.f = ns.f + 1 %}<figure>{{ svg|safe }}<figcaption><b>그림 {{ ns.f }}.</b> {{ cap }}</figcaption></figure>{%- endmacro %}
+{% macro tcap(text) -%}{% set ns.t = ns.t + 1 %}<caption>표 {{ ns.t }}. {{ text }}</caption>{%- endmacro %}
+{% macro cls(v) -%}{% if v is number and v < 0 %}neg{% elif v is number and v > 0 %}pos{% endif %}{%- endmacro %}
+{% macro dc(c) -%}{% if c == 'SYNTHETIC' %}<span class="badge b-syn">SYNTHETIC 가상</span>{% elif c == 'REAL_OFFICIAL' %}<span class="badge b-real">REAL_OFFICIAL</span>{% elif c == 'DERIVED' %}<span class="badge b-der">DERIVED</span>{% elif c == 'USER_UPLOADED' %}<span class="badge b-up">USER_UPLOADED</span>{% else %}<span class="badge">{{ c }}</span>{% endif %}{%- endmacro %}
+<div class="screenbar"><span>{{ meta.title }} · 보고서 {{ meta.report_id }} · v{{ meta.version }} (읽기 전용 스냅샷)</span><span>가상 PoC</span></div>
+<main>
+
+<!-- ============================== 표지 ============================== -->
+<section class="cover">
+  <div>
+    <div class="brand">JIRISO DATA STUDIO</div>
+    <div style="height:28mm"></div>
+    <h1>{{ meta.title }}</h1>
+    <p style="font-size:12pt;color:var(--ink2)">공동주택 설계변경 전후 (A) 직사일조시간 · (B) 그림자 변화 · (C) 건축물 이격거리 분석</p>
+    <div style="height:8mm"></div>
+    <span class="stamp">가상 PoC · 실제 LH 설계안 아님</span>
+  </div>
+  <dl>
+    <dt>프로젝트</dt><dd>{{ meta.project_name }}</dd>
+    <dt>분석 대상 지역</dt><dd>{{ site.district }}<br><span class="small">대표점: {{ site.official_address }} (LH 공고 지도 마커, 경계 미검증)</span></dd>
+    <dt>설계 시나리오</dt><dd>A: {{ sm.scenarios.A.name }} (rev {{ sm.scenarios.A.revision }})<br>B: {{ sm.scenarios.B.name }} (rev {{ sm.scenarios.B.revision }})</dd>
+    <dt>분석일·시간</dt><dd>{{ sm.params.date }} {{ sm.params.start }}~{{ sm.params.end }} ({{ sm.params.timezone }}, 표준시 KST=UTC+9, 간격 {{ sm.params.interval_min }}분)</dd>
+    <dt>분석 항목</dt><dd>{{ sm.analysis_type }} {% if sm.analysis_type == 'ALL' %}(A·B·C 전체){% endif %}</dd>
+    <dt>보고서 작성일</dt><dd>{{ meta.generated_at }}</dd>
+    <dt>보고서 ID / 버전</dt><dd>{{ meta.report_id }} / v{{ meta.version }}</dd>
+    <dt>발행 주체</dt><dd>{{ meta.publisher }}</dd>
+  </dl>
+  <div class="warn"><b>중요 고지.</b> {{ disclaimer }} 지형은 {% if sm.terrain.data_class == 'SYNTHETIC' %}<b>합성(SYNTHETIC) 30 m DEM</b>으로 실제 지역 지형이 아니며{% else %}사용자 업로드 DEM이며{% endif %}, 계획지반은 가상 지반 가정입니다. 법규 적합/위반 판정을 하지 않습니다.</div>
+</section>
+
+<!-- ============================== 목차 ============================== -->
+<section class="toc">
+  <h2 style="border:none">목차</h2>
+  <ol>
+  {% for sid, title in sections %}<li><span>{{ title }}</span><span>{{ toc_pages.get(title, '…') }}</span></li>{% endfor %}
+  </ol>
+  <p class="small" style="margin-top:6mm">쪽번호는 1차 렌더링된 PDF에서 각 장 제목의 실제 위치를 추출하여 기입했습니다. 표·그림 번호는 본문 순서대로 부여됩니다. 요구 17개 항목(표지 포함)과 장의 대응은 16장 부록 표에 있습니다.</p>
+</section>
+
+<!-- ============================== 1 문서관리 ============================== -->
+<section class="chapter" id="s01">
+<h2>1. 문서관리</h2>
+<table>{{ tcap("문서 식별 정보") }}
+<tbody>
+<tr><th style="width:42mm">보고서 ID</th><td class="mono">{{ meta.report_id }}</td></tr>
+<tr><th>Analysis run ID</th><td class="mono">{{ meta.run_id }}</td></tr>
+<tr><th>문서 버전</th><td>v{{ meta.version }} (동일 run의 성공 보고서 순번 기반)</td></tr>
+<tr><th>생성 시각</th><td>{{ meta.generated_at }} ({{ meta.generated_at_utc }} UTC)</td></tr>
+<tr><th>분석 엔진</th><td>{{ meta.engine }} v{{ meta.engine_version }} · 알고리즘 {{ meta.algorithm_version }} · 광선엔진 {{ sm.provenance.raycast_engine }}</td></tr>
+<tr><th>코드 commit</th><td class="mono">{{ meta.commit }}</td></tr>
+<tr><th>Cache key</th><td class="mono">{{ sm.provenance.cache_key }}</td></tr>
+<tr><th>지형 입력 해시 (SHA-256)</th><td class="mono">{{ sm.provenance.input_hashes.terrain_sha256 }}</td></tr>
+<tr><th>형상 해시 A / B</th><td class="mono">{{ sm.provenance.input_hashes.geometry_hash_a }}<br>{{ sm.provenance.input_hashes.geometry_hash_b }}</td></tr>
+<tr><th>시나리오 해시 A / B</th><td class="mono">{{ sm.provenance.input_hashes.scenario_hash_a }}<br>{{ sm.provenance.input_hashes.scenario_hash_b }}</td></tr>
+<tr><th>검증 상태</th><td>{% if qa.critical_fail %}<span class="fail">QA 치명 실패 {{ qa.critical_fail|length }}건</span>{% else %}<span class="pass">자동 QA 치명 항목 전부 통과</span>{% endif %} (통과 {{ qa.n_pass }} / 실패 {{ qa.n_fail }}) · 상태 {{ qa.verification_status }}</td></tr>
+<tr><th>분석 처리시간</th><td>{{ meta.processing_s|n(1) }} s (민감도 재계산 포함)</td></tr>
+</tbody></table>
+<table>{{ tcap("문서 개정 기록") }}
+<thead><tr><th>버전</th><th>일시</th><th>내용</th></tr></thead>
+<tbody><tr><td>v{{ meta.version }}</td><td>{{ meta.generated_at }}</td><td>분석 run {{ meta.run_id }} 스냅샷으로부터 자동 생성 (수정 불가 스냅샷)</td></tr></tbody></table>
+<div class="note">본 문서는 분석 실행 시점에 고정된 입력 스냅샷과 결과 파일(analysis_summary.json, quality_check.json)로부터 결정론적으로 생성되었습니다. 변경안 B가 이후 수정되어도 본 보고서와 그 수치는 바뀌지 않으며, 수정된 시나리오는 새 해시·새 run으로 관리됩니다. LLM이나 외부 네트워크를 사용하지 않았습니다.</div>
+</section>
+
+<!-- ============================== 2 요약 ============================== -->
+<section class="chapter" id="s02">
+<h2>2. 요약 (Executive Summary)</h2>
+<div class="kpis">
+{% if sm.A %}
+<div class="kpi"><div class="l">A. 일조 감소 수광점</div><div class="v neg">{{ "{:,}".format(sm.A.n_decreased) }}</div><div class="s">비교 {{ "{:,}".format(sm.A.n_common) }}개 중 · 증가 {{ "{:,}".format(sm.A.n_increased) }}</div></div>
+<div class="kpi"><div class="l">A. 최대 직사일조 감소</div><div class="v neg">{{ sm.A.delta_total_min_min|n(0) }}분</div><div class="s">평균 {{ sm.A.mean_total_min_a|n(1) }} → {{ sm.A.mean_total_min_b|n(1) }}분</div></div>
+{% endif %}
+{% if sm.B %}
+<div class="kpi"><div class="l">B. 최대 신규 음영면적</div><div class="v neg">{{ sm.B.max_new_shade_area_m2|n(0) }} m²</div><div class="s">{{ sm.B.max_new_shade_time }} KST · 유효 {{ sm.B.valid_area_m2|n(0) }} m²</div></div>
+<div class="kpi"><div class="l">B. 누적 음영 증가 면적</div><div class="v">{{ sm.B.area_more_shade_m2|n(0) }} m²</div><div class="s">감소 면적 {{ sm.B.area_less_shade_m2|n(0) }} m²</div></div>
+{% endif %}
+{% if sm.C and sm.C.min_pair_a %}
+<div class="kpi"><div class="l">C. 최소 이격 A → B</div><div class="v">{{ sm.C.min_pair_a.distance_m|n(2) }} → {{ sm.C.min_pair_b.distance_m|n(2) }} m</div><div class="s">{{ sm.C.min_pair_b.pair_id|replace('|','↔') }}</div></div>
+<div class="kpi"><div class="l">C. 이격 감소 건물쌍</div><div class="v">{{ sm.C.n_worsened }}쌍</div><div class="s">증가 {{ sm.C.n_improved }} · 접촉/중첩 {{ sm.C.n_contact_or_overlap_b }}</div></div>
+{% endif %}
+</div>
+<h3>핵심 결과 (계산값)</h3>
+<ul class="tight">{% for s in exec %}<li>{{ s }}</li>{% endfor %}</ul>
+<h3>검토 우선 항목</h3>
+<table>{{ tcap("검토 우선순위 요약 (상세는 12장)") }}
+<thead><tr><th>구분</th><th>대상</th><th>근거(계산값)</th></tr></thead><tbody>
+{% for r in recs[:6] %}<tr><td>{{ r.level }}</td><td>{{ r.target }}</td><td>{{ r.basis }}</td></tr>{% endfor %}
+</tbody></table>
+<h3>해석상 주의사항</h3>
+<ul class="tight">
+<li>직사일조는 <b>기하학적 직사일조 가능 시간</b>입니다. 구름·기상, 일사에너지, 실내 조도, 세대별 일조권을 의미하지 않습니다.</li>
+<li>수광점은 실제 창호가 아닌 <b>외벽 대리지점(facade_proxy)</b>이며, 분석 메쉬에 포함된 차폐물만 반영합니다(coverage flag: {{ sm.coverage.flag }}).</li>
+<li>지형은 {% if sm.terrain.data_class == 'SYNTHETIC' %}합성 30 m DEM(실제 인천계양 지형 아님){% else %}업로드 30 m DEM{% endif %}, 계획지반은 가상 평탄 지반 가정입니다.</li>
+<li>이격거리는 수평 최단거리 등 기하 계측값이며 건축법 제61조·시행령 제86조 등 법정 이격 적합성은 판정하지 않습니다.</li>
+</ul>
+</section>
+
+<!-- ============================== 3 배경 ============================== -->
+<section class="chapter" id="s03">
+<h2>3. 분석 배경과 목적</h2>
+<p>본 분석은 동일한 대지·지형·주변 조건에서 기준안 A와 설계변경안 B의 주동 배치(이동·회전·층수)를 비교하여, 변경이 (A) 주동 외벽 수광점의 직사일조 가능 시간, (B) 단지 지표면의 음영 분포와 지속시간, (C) 주동 간 수평 이격거리에 미치는 변화를 정량화하는 것을 목적으로 합니다. 모든 수치는 Python 분석엔진의 3D 광선교차 및 평면 기하 연산에서 산출되었으며, 웹 3D 화면의 렌더링 그림자 픽셀은 수치로 사용하지 않았습니다.</p>
+<div class="two">
+<div><h4>이 결과로 판단할 수 있는 것</h4><ul class="tight">
+<li>설계변경으로 직사일조가 줄거나 늘어난 주동·층·외벽 위치와 그 크기(분)</li>
+<li>변경으로 새로 생기거나 해소된 지표면 음영의 위치·면적·시간대</li>
+<li>가상 놀이터·휴게공간의 음영 지속시간 변화</li>
+<li>주동 쌍별 최단 이격거리 증감과 최근접 위치</li>
+<li>추가 검토가 필요한 위치의 우선순위</li></ul></div>
+<div><h4>판단할 수 없는 것</h4><ul class="tight">
+<li>실제 LH 설계안·실제 세대의 일조 성능 및 일조권 침해 여부</li>
+<li>건축법·조례상 일조/이격 기준 적합 여부, 인허가 가능성</li>
+<li>기상(구름)을 고려한 일조시간, 일사량, 실내 채광·조도, 에너지</li>
+<li>모델 범위 밖 실제 건물·수목·산지에 의한 차폐</li>
+<li>30 m DEM의 수직 정확도를 넘어서는 지형 정밀 효과</li></ul></div>
+</div>
+</section>
+
+<!-- ============================== 4 지역·대상 ============================== -->
+<section class="chapter" id="s04">
+<h2>4. 대상 지역 및 대상 주동</h2>
+<table>{{ tcap("대상지 위치 근거") }}<tbody>
+<tr><th style="width:40mm">지구</th><td>{{ site.district }}</td></tr>
+<tr><th>공식 위치 근거</th><td>LH 청약플러스 「인천계양 A2블록 공공분양주택 입주자모집공고」 소재지 {{ site.official_address }}, 지도 마커 좌표 ({{ site.lat0 }}, {{ site.lon0 }}) {{ dc('REAL_OFFICIAL') }}<br><span class="small">{{ lh_url }} (접근 {{ site.location_source.accessed }})</span></td></tr>
+<tr><th>교차확인</th><td>{{ site.location_source.cross_check.source }} ({{ site.location_source.cross_check.lat }}, {{ site.location_source.cross_check.lon }}) – 법정동 중심점이며 블록 위치 아님</td></tr>
+<tr><th>지구/블록 경계</th><td>{{ site.boundary_status }} {{ dc('SYNTHETIC') }}</td></tr>
+<tr><th>개략 위치 여부</th><td>approximate_demo_location = {{ site.approximate_demo_location|lower }} (대표점은 공식 페이지에서 확인, 경계·배치는 가상)</td></tr>
+<tr><th>후속 후보지</th><td>{{ site.follow_up_candidate }}</td></tr>
+</tbody></table>
+{{ fig(figs.location, "대상지 대표점, 가상 대상지(300 m), 가상 계획지반(초록), 지형 모델 영역(점선). 배경지도 없음(자체 생성 정적 지도).") }}
+<p>대상 단지는 대표점을 원점으로 한 300 m × 300 m 가상 대상지에 배치한 가상 주동 {{ sm.counts.main_buildings }}개와 주변 참고건물 {{ sm.counts.buildings - sm.counts.main_buildings }}개(모두 {{ dc('SYNTHETIC') }})로 구성됩니다. 실제 단지배치도·동호배치도의 형상을 재현하지 않았습니다.</p>
+<table>{{ tcap("대상 주동 및 주변 참고건물 목록 (기준안 A)") }}
+<thead><tr><th>ID</th><th>구분</th><th class="r">층수</th><th class="r">높이(m)</th><th class="r">지반고 z(m)</th><th class="r">footprint(m²)</th><th>중심 (E, N) m</th><th>자료</th></tr></thead><tbody>
+{% for b in sm.scenarios.A.buildings %}<tr><td>{{ b.id }}</td><td>{{ '주동' if b.kind == 'MAIN' else '주변 참고' }}</td><td class="r">{{ b.floors }}</td><td class="r">{{ b.height_m|n(1) }}</td><td class="r">{{ b.base_z|n(2) }}</td>
+<td class="r">{{ b.footprint_area_m2|n(1) }}</td>
+<td>{{ b.centroid[0]|round(1) }}, {{ b.centroid[1]|round(1) }}</td><td>{{ dc(b.data_class) }}</td></tr>{% endfor %}
+</tbody></table>
+{{ fig(figs.layout, "기준안 A / 변경안 B 배치 비교. 초록 = 가상 어린이놀이터·휴게공간(DEMO). 층수 표기 F.") }}
+</section>
+
+<!-- ============================== 5 데이터 ============================== -->
+<section class="chapter" id="s05">
+<h2>5. 데이터 인벤토리 및 품질</h2>
+{% set t = sm.terrain %}{% set dq = t.dem_qa %}
+<table>{{ tcap("지형(30 m DEM) 원자료 정보") }}<tbody>
+<tr><th style="width:44mm">자료 분류</th><td>{{ dc(t.data_class) }} {% if t.data_class == 'SYNTHETIC' %}합성 지형 – 실제 지역 지형이라고 해석하면 안 됨{% endif %}</td></tr>
+<tr><th>파일명 / SHA-256</th><td>{{ t.filename }}<br><span class="mono">{{ t.sha256 }}</span></td></tr>
+<tr><th>취득일 / 라이선스</th><td>{{ t.acquired or '미확보' }} / {{ t.license or '미확보' }}</td></tr>
+<tr><th>CRS</th><td>{{ dq.crs }} (투영: {{ dq.crs_is_projected }})</td></tr>
+<tr><th>원자료 셀 크기</th><td>{{ dq.cell_size_x|n(2) }} × {{ dq.cell_size_y|n(2) }} m ({{ dq.width }} × {{ dq.height }} 셀)</td></tr>
+<tr><th>수직기준</th><td>{{ t.vertical_datum }} · 상태 <b>{{ t.vertical_datum_status }}</b></td></tr>
+<tr><th>표면 유형</th><td>{{ t.surface_type }} {% if t.surface_type == 'DSM_POSSIBLE' %}<span class="badge b-warn">건물·수목 포함 가능 – 이중 모델링 주의</span>{% endif %}</td></tr>
+<tr><th>고도 범위 / NoData</th><td>{{ dq.elev_min|n(2) }} ~ {{ dq.elev_max|n(2) }} m · NoData {{ (dq.nodata_ratio*100)|round(3) }}%</td></tr>
+<tr><th>경사 (최대 / 99%)</th><td>{{ dq.slope_max_deg|n(2) }}° / {{ dq.slope_p99_deg|n(2) }}°</td></tr>
+<tr><th>분석영역 커버리지</th><td>{{ ((dq.coverage_ratio or 0)*100)|round(2) }}% ({{ (sm.ground.region_half_extent_m*2/1000)|round(1) }} km × {{ (sm.ground.region_half_extent_m*2/1000)|round(1) }} km 지형 모델 영역 기준)</td></tr>
+<tr><th>DEM 검사 경고</th><td>{% if dq.warnings %}{{ dq.warnings|join(' / ') }}{% else %}없음{% endif %}</td></tr>
+</tbody></table>
+<table>{{ tcap("분석 격자·메쉬 간격 (원자료 정확도와 별개)") }}<thead><tr><th>항목</th><th class="r">간격</th><th>의미</th></tr></thead><tbody>
+<tr><td>DEM 원자료</td><td class="r">{{ dq.cell_size_x|n(1) }} m</td><td>지형 정보의 실제 공간해상도</td></tr>
+<tr><td>지형 분석 메쉬</td><td class="r">{{ sm.ground.mesh_spacing_m|n(1) }} m</td><td>DEM 쌍선형 보간 – 정확도 향상 아님 (영역 ±{{ sm.ground.region_half_extent_m|int }} m)</td></tr>
+<tr><td>그림자 분석 격자</td><td class="r">{{ sm.params.grid_spacing_m|n(1) }} m</td><td>샘플링 간격일 뿐 DEM 정확도가 아님</td></tr>
+<tr><td>수광점 수평 간격</td><td class="r">7.5 m 이하</td><td>외벽 길이를 균등분할한 대리지점</td></tr></tbody></table>
+{{ fig(figs.terrain, "분석에 사용한 지면 메쉬의 지반고(음영기복+등고선, 간격은 고도 범위에 따라 5~100 m)와 가상 계획지반(빨간 사각형). 시각화와 레이캐스팅은 동일 메쉬를 사용.") }}
+<table>{{ tcap("가상 계획지반(SiteDesignGround) 가정 및 접합 QA") }}<tbody>
+<tr><th style="width:52mm">계획지반고 pad_z</th><td>{{ sm.ground.pad_z_m|n(2) }} m {{ dc('DERIVED') }} – 대상지 내 DEM 중앙값 (가상 지반 가정)</td></tr>
+<tr><th>pad 범위 (ENU)</th><td>{{ sm.ground.pad_rect_enu|join(', ') }}</td></tr>
+<tr><th>접합대 폭 / 최대 경사 / 95% 경사</th><td>{{ sm.ground.blend_band_m }} m / {{ sm.ground.blend_band_slope_max_deg|n(2) }}° / {{ sm.ground.blend_band_slope_p95_deg|n(2) }}°</td></tr>
+<tr><th>인접 정점 최대 단차 (메쉬 전체, 산지 포함)</th><td>{{ sm.ground.max_vertex_step_m|n(2) }} m</td></tr>
+<tr><th>pad 절토/성토 최대</th><td>절토 {{ sm.ground.pad_cut_max_m|n(2) }} m / 성토 {{ sm.ground.pad_fill_max_m|n(2) }} m</td></tr>
+<tr><th>경고</th><td>{{ sm.ground.warnings|join(' / ') if sm.ground.warnings else '없음' }}</td></tr></tbody></table>
+<table>{{ tcap("자료별 분류 및 신뢰수준") }}<thead><tr><th>자료</th><th>분류</th><th>출처/설명</th><th>신뢰/검증 수준</th></tr></thead><tbody>
+<tr><td>대상지 대표점</td><td>{{ dc('REAL_OFFICIAL') }}</td><td>LH 공고 페이지 지도 마커</td><td>점 위치만 확인, 경계 미검증</td></tr>
+<tr><td>지형</td><td>{{ dc(t.data_class) }}</td><td>{{ t.filename }}</td><td>{% if t.data_class == 'SYNTHETIC' %}가상 – 실제 지형과 무관{% else %}원자료 품질에 의존 (수직기준 {{ t.vertical_datum_status }}){% endif %}</td></tr>
+<tr><td>계획지반</td><td>{{ dc('DERIVED') }}</td><td>평탄 pad + 접합대</td><td>분석 가정</td></tr>
+<tr><td>주동·주변건물</td><td>{% for c in qa.data_classes.buildings %}{{ dc(c) }}{% endfor %}</td><td>자체 생성 가상 형상</td><td>실제 설계 아님</td></tr>
+<tr><td>대지경계·놀이터·휴게공간</td><td>{{ dc('SYNTHETIC') }}</td><td>DEMO 가상 폴리곤</td><td>실제 시설 위치 아님</td></tr>
+<tr><td>창호</td><td>미확보</td><td>외벽 대리지점(facade_proxy)으로 대체</td><td>세대별 일조로 해석 금지</td></tr></tbody></table>
+<div class="note"><b>모델 커버리지.</b> 반영: {{ sm.coverage.modelled }}. 미반영: {{ sm.coverage.not_modelled }}. 지형 경계 최대 고도각 {{ sm.ground.horizon.region_edge_max_elevation_angle_deg }}°, 영역 내부 지형 최대 고도각 {{ sm.ground.horizon.interior_terrain_max_elevation_angle_deg }}°, 분석시간 최소 태양고도 {{ sm.ground.horizon.min_sun_elevation_in_window_deg }}° → 외곽 차폐 가능성 {{ '있음 (경고)' if sm.ground.horizon.outside_region_obstruction_possible else '낮음 (모델 경계 기준)' }}.</div>
+</section>
+
+<!-- ============================== 6 시나리오 ============================== -->
+<section class="chapter" id="s06">
+<h2>6. 설계 시나리오 정의</h2>
+<p>기준안 A는 잠금(불변) 상태이며, 변경안 B는 주동별 강체 변환(동서 dx·남북 dy 이동, footprint 중심 기준 반시계 회전, 층수 증감 1층=2.9 m)으로 정의됩니다. 주동 지반고는 가상 계획지반고를 따릅니다.</p>
+<table>{{ tcap("A/B에서 바뀐 항목만 요약") }}
+<thead><tr><th>주동</th><th class="r">dx (m, 동+)</th><th class="r">dy (m, 북+)</th><th class="r">회전 (°)</th><th class="r">층수 A→B</th><th class="r">높이 A→B (m)</th><th>경고</th></tr></thead><tbody>
+{% set bmap = {} %}{% for b in sm.scenarios.B.buildings %}{% set _ = bmap.update({b.id: b}) %}{% endfor %}
+{% for a in sm.scenarios.A.buildings if a.id in sm.changed_buildings %}{% set b = bmap[a.id] %}
+<tr><td>{{ a.id }}</td><td class="r">{{ b.transform.dx|n(1) }}</td><td class="r">{{ b.transform.dy|n(1) }}</td><td class="r">{{ b.transform.rot_deg|n(1) }}</td><td class="r">{{ a.floors }} → {{ b.floors }}</td><td class="r">{{ a.height_m|n(1) }} → {{ b.height_m|n(1) }}</td><td>{{ b.warnings|join(', ') or '-' }}</td></tr>
+{% else %}<tr><td colspan="7">변경된 주동 없음 (A와 B가 동일)</td></tr>{% endfor %}
+</tbody></table>
+<table>{{ tcap("변경안 B 전체 주동 제원") }}
+<thead><tr><th>ID</th><th class="r">층수</th><th class="r">높이(m)</th><th class="r">지반고(m)</th><th class="r">최고 z(m)</th><th>중심 (E, N)</th><th>변경</th></tr></thead><tbody>
+{% for b in sm.scenarios.B.buildings if b.kind == 'MAIN' %}<tr><td>{{ b.id }}</td><td class="r">{{ b.floors }}</td><td class="r">{{ b.height_m|n(1) }}</td><td class="r">{{ b.base_z|n(2) }}</td><td class="r">{{ b.top_z|n(2) }}</td><td>{{ b.centroid[0]|round(1) }}, {{ b.centroid[1]|round(1) }}</td><td>{{ '변경' if b.id in sm.changed_buildings else '-' }}</td></tr>{% endfor %}
+</tbody></table>
+<p class="small">시나리오 해시 A {{ sm.scenarios.A.content_hash[:16] }}… (rev {{ sm.scenarios.A.revision }}), B {{ sm.scenarios.B.content_hash[:16] }}… (rev {{ sm.scenarios.B.revision }}).</p>
+</section>
+
+<!-- ============================== 7 방법론 ============================== -->
+<section class="chapter" id="s07">
+<h2>7. 공통 분석 방법론</h2>
+<h3>7.1 좌표계</h3>
+<p>모든 수평거리·면적과 3D 광선 계산은 대표점({{ site.lat0 }}N, {{ site.lon0 }}E)을 원점으로 하는 <b>local ENU</b>(x=동, y=북, z=상, m)에서 수행했습니다. WGS84 측지좌표↔ECEF 변환은 pyproj(EPSG:4979↔EPSG:4978), DEM 및 교환 좌표는 EPSG:5179를 사용합니다. 경위도 도 단위로 거리를 계산하지 않았습니다. 지형은 접평면(ENU) 위에 DEM 고도를 그대로 올려 구성하며 지구곡률 강하를 보정하지 않았습니다. 강하량 d²/2R은 영역 가장자리(±{{ (sm.ground.region_half_extent_m/1000)|round(1) }} km)에서 약 {{ ((sm.ground.region_half_extent_m**2)/(2*6371000))|round(2) }} m이며, 먼 지형을 그만큼 높게 두는 보수적(차폐 과대) 방향입니다.</p>
+<p>수직: 지형의 수직기준 상태는 <b>{{ sm.terrain.vertical_datum_status }}</b>입니다. EGM96/EGM2008 지오이드고와 WGS84 타원체고를 상수로 환산하지 않았으며, 모든 높이(지형·계획지반·건물 기준고·수광점)는 동일 DEM 기준의 통일 고도 z로 일관되게 다룹니다. 웹 3D 화면은 동일 메쉬를 pad_z만큼 일괄 하향하여 표시하며 상대 기하는 동일합니다.</p>
+<h3>7.2 메쉬 구성</h3>
+<p>지면: 30 m DEM을 10 m 정점 격자로 쌍선형 표본화한 높이장에 가상 평탄 계획지반을 smoothstep 접합 ({{ "{:,}".format(sm.counts.ground_vertices) }}정점, {{ "{:,}".format(sm.counts.ground_triangles) }}삼각형). 건물: footprint 다각형을 이각 분할(ear clipping)한 닫힌 각기둥(바닥·지붕·외벽, 외향 winding). 각 메쉬는 Open3D RaycastingScene에 별도 geometry로 등록되어 차폐 원인 ID를 식별합니다.</p>
+<h3>7.3 태양위치와 시간</h3>
+<p>{{ sm.sun.method }}, 고도각 필드 <code>{{ sm.sun.elevation_field }}</code>(대기굴절 보정, pvlib 기본 표준대기). 입력 시각은 {{ sm.params.timezone }} 벽시계 시각을 시간대 인식(timezone-aware) 값으로 만든 뒤 UTC로 변환하며, 웹 Cesium Clock에도 동일 UTC 순간을 전달합니다. ENU 태양 단위벡터 s = (cos h·sin A, cos h·cos A, sin h) (A: 북 0°·동 90°). {{ sm.sun.time_rule }}. 구간 수 {{ sm.sun.n_intervals }}, 분석시간 내 태양고도 {{ sm.sun.elevation_min_deg|n(2) }}° ~ {{ sm.sun.elevation_max_deg|n(2) }}°.</p>
+{{ fig(figs.sunpath, sm.params.date ~ " 분석시간 태양 고도각·방위각 (구간 중점 시각)") }}
+<h3>7.4 레이캐스팅 판정 규칙</h3>
+<table>{{ tcap("판정 규칙") }}<thead><tr><th>항목</th><th>규칙</th></tr></thead><tbody>
+<tr><td>A 직사일조</td><td>태양고도 &gt; 0° 이고 외벽 외향법선 n·s &gt; 0 이며, p + ε·n 에서 s 방향 광선이 어떤 메쉬와도 교차하지 않으면 1. 그 외 0 (지평선 아래 / 배면 / 차폐 원인 ID 기록).</td></tr>
+<tr><td>자가교차 offset ε</td><td>{{ sm.A.offset_m|n(3) if sm.A else '-' }} m = max(0.02, 2×10⁻⁵ × 분석 대상(건물·대상지) 범위) – 광선 시작점 부근 좌표 크기에 따른 float32 정밀도 기준. 실행마다 자가충돌 0건 검증(14장)</td></tr>
+<tr><td>B 지표면 음영</td><td>격자 셀 중심에서 지면 메쉬 수직 레이로 지반고를 구하고, z+ε에서 태양방향 광선이 교차하면 SHADE. 태양고도 ≤ 0° 구간은 분석시간에서 제외 (이번 실행 제외 {{ sm.B.excluded_intervals_sun_below_horizon if sm.B else '-' }}구간).</td></tr>
+<tr><td>B 마스킹 / 공통분모</td><td>A 또는 B의 건물 footprint 내부 셀, NoData 셀을 양안 모두에서 제외 → A·B 유효격자·면적 분모 동일.</td></tr>
+<tr><td>C 이격거리</td><td>ENU 평면에서 Shapely distance / nearest_points. 접촉·중첩 시 0 m + CONTACT/OVERLAP 표시 (음수 거리 없음).</td></tr>
+<tr><td>C 법선 방향 거리</td><td>외벽 중점에서 외향법선 방향 500 m 탐색, 첫 타 건물 외곽선 교차점까지 거리. 없으면 '해당 방향 교차 없음'.</td></tr></tbody></table>
+<h3>7.5 성능 및 버전</h3>
+<table>{{ tcap("처리 성능 및 사용 버전") }}<tbody>
+<tr><th style="width:44mm">처리시간 (s)</th><td>{% for k, v in sm.timing_s.items() %}{{ k }}: {{ v }}{{ ', ' if not loop.last }}{% endfor %} (민감도 제외 본 분석)</td></tr>
+<tr><th>광선 수</th><td>A {{ "{:,}".format(sm.A.rays_cast) if sm.A else '-' }} · B {{ "{:,}".format(sm.B.rays_cast) if sm.B else '-' }}</td></tr>
+<tr><th>의존성</th><td class="small">{% for k, v in sm.provenance.dependencies.items() %}{{ k }} {{ v }}{{ ' · ' if not loop.last }}{% endfor %}</td></tr></tbody></table>
+<h3>7.6 해석의 한계</h3>
+<p>구간 중점 규칙으로 일조↔차폐 전이당 최대 ±{{ sm.params.interval_min / 2 }}분의 이산화 오차가 있습니다(13장 Δt=1분 비교 참조). 메쉬는 발코니·창틀·돌출부를 포함하지 않는 단순 각기둥입니다.</p>
+</section>
+
+<!-- ============================== 8 A ============================== -->
+<section class="chapter" id="s08">
+<h2>8. A. 직사일조 상세 결과</h2>
+{% if sm.A %}{% set a = sm.A %}
+<p>수광점 유형: {{ a.receiver_type }}. 수광점은 각 층 바닥 +1.5 m 높이, 외벽을 7.5 m 이하로 균등분할한 중점에 배치되며 ID(예: 105-F05-S0-03 = 105동 5층 남측 0번 외벽 3번째 점)는 A/B에서 동일하게 유지됩니다. 이동된 주동의 수광점은 각 안의 실제 위치에서 계산했습니다.</p>
+<table>{{ tcap("A 분석 요약") }}<tbody>
+<tr><th style="width:62mm">비교 수광점 (공통 ID)</th><td class="r">{{ "{:,}".format(a.n_common) }}</td></tr>
+<tr><th>A 전용 / B 전용 (비교 제외)</th><td class="r">{{ a.n_only_a }} / {{ a.n_only_b }}</td></tr>
+<tr><th>감소 / 증가 / 변화 없음</th><td class="r">{{ "{:,}".format(a.n_decreased) }} / {{ "{:,}".format(a.n_increased) }} / {{ "{:,}".format(a.n_unchanged) }}</td></tr>
+<tr><th>감소 중 다른(비변경) 주동 / 변경 주동 자신</th><td class="r">{{ "{:,}".format(a.n_decreased_other_buildings) }} / {{ "{:,}".format(a.n_decreased_self_modified) }}</td></tr>
+<tr><th>평균 총 직사일조 A → B</th><td class="r">{{ a.mean_total_min_a|n(1) }} → {{ a.mean_total_min_b|n(1) }} 분 (평균 Δ {{ a.delta_total_min_mean|n(2) }})</td></tr>
+<tr><th>Δ 총 직사일조 최소 / 최대</th><td class="r">{{ a.delta_total_min_min|n(0) }} / {{ a.delta_total_min_max|n(0) }} 분</td></tr>
+<tr><th>Δ 최대 연속일조 최소 / 최대</th><td class="r">{{ a.delta_max_cont_min_min|n(0) }} / {{ a.delta_max_cont_min_max|n(0) }} 분</td></tr>
+<tr><th>가장 악화된 층 (평균 Δ 기준)</th><td class="r">{% if a.worst_floor %}{{ a.worst_floor.building_id }}동 {{ a.worst_floor.floor }}층 (평균 {{ a.worst_floor.mean_delta_min|n(1) }}분, 최소 {{ a.worst_floor.min_delta_min|n(0) }}분){% else %}-{% endif %}</td></tr>
+<tr><th>감소 수광점의 주 차폐 원인 (B)</th><td class="r">{% for k, v in a.cause_counts.items() %}{{ k }}동 {{ v }}개{{ ', ' if not loop.last }}{% else %}-{% endfor %}</td></tr></tbody></table>
+<table>{{ tcap("주동별 직사일조 요약") }}
+<thead><tr><th>주동</th><th>변경</th><th class="r">수광점</th><th class="r">평균 A(분)</th><th class="r">평균 B(분)</th><th class="r">평균 Δ</th><th class="r">최소 Δ</th><th class="r">감소</th><th class="r">증가</th><th class="r">0분 A/B</th></tr></thead><tbody>
+{% for b in a.per_building %}<tr><td>{{ b.building_id }}</td><td>{{ '●' if b.changed_in_b else '' }}</td><td class="r">{{ b.n_receivers }}</td><td class="r">{{ b.mean_total_min_a|n(1) }}</td><td class="r">{{ b.mean_total_min_b|n(1) }}</td><td class="r {{ cls(b.mean_delta_min) }}">{{ b.mean_delta_min|n(1) }}</td><td class="r {{ cls(b.min_delta_min) }}">{{ b.min_delta_min|n(0) }}</td><td class="r">{{ b.n_decreased }}</td><td class="r">{{ b.n_increased }}</td><td class="r">{{ b.n_zero_sun_a }}/{{ b.n_zero_sun_b }}</td></tr>{% endfor %}
+</tbody></table>
+{{ fig(figs.sun_bars, "주동별 평균 총 직사일조(A 파랑, B 주황)와 감소/증가 수광점 수.") }}
+{{ fig(figs.sun_map, "수광점 직사일조 변화의 평면 분포 (B 위치, 각 수직열의 층 중 절댓값 최대 Δ). 빨강 = 감소, 파랑 = 증가.") }}
+{{ fig(figs.sun_hist, "수광점별 Δ 총 직사일조 분포 (로그 축).") }}
+{% for f in figs.facades %}{{ fig(f.svg, f.building ~ "동 " ~ f.facade ~ "면 입면 행렬: 층(세로) × 수광점 열(가로)의 A, B 총 직사일조와 Δ.") }}{% endfor %}
+<table>{{ tcap("일조 감소 상위 수광점 (최대 20개)") }}
+<thead><tr><th>수광점 ID</th><th class="r">층</th><th>면</th><th class="r">A(분)</th><th class="r">B(분)</th><th class="r">Δ(분)</th><th class="r">최대연속 A→B</th><th>주 원인(B)</th><th>영향 유형</th></tr></thead><tbody>
+{% for r in a.worst_receivers %}<tr><td class="mono">{{ r.receiver_id }}</td><td class="r">{{ r.floor }}</td><td>{{ r.facade }}</td><td class="r">{{ r.sun_total_min_a|n(0) }}</td><td class="r">{{ r.sun_total_min_b|n(0) }}</td><td class="r neg">{{ r.delta_total_min|n(0) }}</td><td class="r">{{ r.max_cont_min_a|n(0) }} → {{ r.max_cont_min_b|n(0) }}</td><td>{{ (r.main_cause_b ~ '동') if r.main_cause_b else '-' }}</td><td>{{ '변경 주동 자신' if r.impact_type == 'SELF_MODIFIED' else '타 주동' }}</td></tr>
+{% else %}<tr><td colspan="9">일조가 감소한 수광점 없음</td></tr>{% endfor %}</tbody></table>
+{{ fig(figs.sun_time, "감소 상위 15개 수광점의 시간별 직사일조 0/1 (A 좌, B 우).") if figs.sun_time else '' }}
+<div class="note">모든 수광점별 결과(좌표·A/B·Δ·원인)는 <span class="mono">sunlight_receivers.csv</span>, 층별 집계는 <span class="mono">sunlight_per_floor.csv</span>(16장 및 부록 표)에 있습니다. coverage flag = MODELLED_OBSTRUCTIONS_ONLY: 모델 밖 차폐요소로 인해 '완전한 실제 일조'를 보장하지 않습니다.</div>
+{% else %}<p>이 실행에서는 A 분석을 수행하지 않았습니다. 수치를 제시하지 않습니다.</p>{% endif %}
+</section>
+
+<!-- ============================== 9 B ============================== -->
+<section class="chapter" id="s09">
+<h2>9. B. 그림자 변화 상세 결과</h2>
+{% if sm.B %}{% set b = sm.B %}
+<table>{{ tcap("B 분석 격자 및 요약") }}<tbody>
+<tr><th style="width:62mm">격자 간격 / 셀 면적</th><td class="r">{{ b.grid_spacing_m }} m / {{ b.cell_area_m2 }} m² (샘플링 간격, DEM 정확도 아님)</td></tr>
+<tr><th>전체 / 유효 셀</th><td class="r">{{ "{:,}".format(b.n_cells_total) }} / {{ "{:,}".format(b.n_cells_valid) }} (유효면적 {{ b.valid_area_m2|n(0) }} m²)</td></tr>
+<tr><th>제외: 건물 footprint(A∪B) / NoData</th><td class="r">{{ "{:,}".format(b.n_cells_excluded_building) }} / {{ "{:,}".format(b.n_cells_excluded_nodata) }}</td></tr>
+<tr><th>분석 구간 / 분석 시간</th><td class="r">{{ b.analysed_intervals }}구간 / {{ b.analysed_minutes|n(0) }}분 (지평선 아래 제외 {{ b.excluded_intervals_sun_below_horizon }}구간)</td></tr>
+<tr><th>평균 누적 음영 A → B</th><td class="r">{{ b.mean_shade_min_a|n(1) }} → {{ b.mean_shade_min_b|n(1) }} 분</td></tr>
+<tr><th>음영 증가 / 감소 / 변화없음 셀</th><td class="r">{{ "{:,}".format(b.n_cells_more_shade) }} / {{ "{:,}".format(b.n_cells_less_shade) }} / {{ "{:,}".format(b.n_cells_unchanged) }}</td></tr>
+<tr><th>음영 증가 / 감소 면적</th><td class="r">{{ b.area_more_shade_m2|n(0) }} / {{ b.area_less_shade_m2|n(0) }} m²</td></tr>
+<tr><th>최대 신규 음영면적 (시각)</th><td class="r">{{ b.max_new_shade_area_m2|n(0) }} m² ({{ b.max_new_shade_time }})</td></tr>
+<tr><th>최대 음영 해소 면적 (시각)</th><td class="r">{{ b.max_relieved_area_m2|n(0) }} m² ({{ b.max_relieved_time }})</td></tr>
+<tr><th>셀 Δ 누적 음영 최소 / 최대</th><td class="r">{{ b.delta_min_min|n(0) }} / {{ b.delta_min_max|n(0) }} 분</td></tr></tbody></table>
+<table>{{ tcap("대표 시각 4상태 면적 (정시 순간 계산)") }}
+<thead><tr><th>시각(KST)</th><th class="r">A 음영(m²)</th><th class="r">B 음영(m²)</th><th class="r">신규 음영(m²)</th><th class="r">음영 해소(m²)</th></tr></thead><tbody>
+{% for r in b.snapshots %}<tr><td>{{ r.time_local }}</td>{% if r.status == 'OK' %}<td class="r">{{ r.shade_area_a_m2|n(0) }}</td><td class="r">{{ r.shade_area_b_m2|n(0) }}</td><td class="r neg">{{ r.new_shade_area_m2|n(0) }}</td><td class="r pos">{{ r.relieved_area_m2|n(0) }}</td>{% else %}<td colspan="4">태양 지평선 아래 – 분석 제외</td>{% endif %}</tr>{% endfor %}
+</tbody></table>
+{{ fig(figs.shadow_states, "대표 시각별 A→B 4상태 음영 지도 (SUN→SUN, SHADE→SHADE, 신규 음영, 음영 해소).") }}
+{{ fig(figs.shadow_curve, "시각별 신규 음영·음영 해소 면적 및 A/B 총 음영면적 곡선.") }}
+{{ fig(figs.shadow_cum, "A, B 누적 음영시간 지도.") }}
+{{ fig(figs.shadow_delta, "누적 음영시간 증감(B−A) 지도. T1~T5 = 음영 증가 상위 셀.") }}
+<table>{{ tcap("가상 놀이터·휴게공간 영향 (DEMO 가상 폴리곤, 실제 LH 시설 아님)") }}
+<thead><tr><th>공간</th><th class="r">유효면적(m²)</th><th class="r">평균 음영 A→B (분)</th><th class="r">평균 Δ</th><th class="r">최대 Δ</th><th class="r">최대 신규 음영면적(m²)</th><th class="r">신규 음영 누계(m²·분)</th><th class="r">해소 누계(m²·분)</th></tr></thead><tbody>
+{% for o in b.open_spaces %}<tr><td>{{ o.name }}</td>{% if o.n_cells %}<td class="r">{{ o.area_m2|n(0) }}</td><td class="r">{{ o.mean_shade_min_a|n(1) }} → {{ o.mean_shade_min_b|n(1) }}</td><td class="r {{ 'neg' if o.mean_delta_min > 0 else ('pos' if o.mean_delta_min < 0 else '') }}">{{ o.mean_delta_min|n(1) }}</td><td class="r">{{ o.max_delta_min|n(0) }}</td><td class="r">{{ o.peak_new_shade_area_m2|n(0) }}</td><td class="r">{{ o.new_shade_cell_minutes_m2min|n(0) }}</td><td class="r">{{ o.relieved_cell_minutes_m2min|n(0) }}</td>{% else %}<td colspan="7">{{ o.note }}</td>{% endif %}</tr>{% endfor %}
+</tbody></table>
+<table>{{ tcap("누적 음영시간 증가 상위 셀 (최대 20개)") }}
+<thead><tr><th>순위</th><th class="r">E (m)</th><th class="r">N (m)</th><th class="r">A(분)</th><th class="r">B(분)</th><th class="r">Δ(분)</th><th>주 원인(B)</th></tr></thead><tbody>
+{% for t in b.top_cells %}<tr><td>T{{ loop.index }}</td><td class="r">{{ t.x|n(1) }}</td><td class="r">{{ t.y|n(1) }}</td><td class="r">{{ t.shade_min_a|n(0) }}</td><td class="r">{{ t.shade_min_b|n(0) }}</td><td class="r neg">+{{ t.delta_min|n(0) }}</td><td>{{ (t.main_cause_b ~ '동') if t.main_cause_b else '-' }}</td></tr>
+{% else %}<tr><td colspan="7">음영이 증가한 셀 없음</td></tr>{% endfor %}</tbody></table>
+<div class="note">웹 3D 화면의 그림자는 Cesium 렌더링 프리뷰(시각 확인용)이며, 본 장의 모든 면적·시간은 Open3D 레이캐스팅 격자 계산값입니다. 셀별 전체 값: <span class="mono">shadow_grid_cells.csv</span>, 변화 셀 GeoJSON: <span class="mono">shadow_grid_changed.geojson</span>.</div>
+{% else %}<p>이 실행에서는 B 분석을 수행하지 않았습니다. 수치를 제시하지 않습니다.</p>{% endif %}
+</section>
+
+<!-- ============================== 10 C ============================== -->
+<section class="chapter" id="s10">
+<h2>10. C. 이격거리 상세 결과</h2>
+{% if sm.C %}{% set c = sm.C %}
+<p>주동 {{ sm.counts.main_buildings }}개의 모든 쌍({{ c.n_pairs }}쌍)에 대해 footprint 간 수평 최단거리와 최근접 두 점을 계산했습니다. {{ c.legal_note }}</p>
+{{ fig(figs.clear_map, "A/B 최단 수평 이격 연결선 (최근접 8쌍 + 감소 상위). 라벨 = 거리 m, B의 괄호 = Δm.") }}
+{{ fig(figs.clear_bars, "건물 쌍별 최단 이격거리 변화 (B−A).") }}
+<table>{{ tcap("건물 쌍별 최단 수평 이격거리") }}
+<thead><tr><th>쌍</th><th class="r">A (m)</th><th class="r">B (m)</th><th class="r">Δ (m)</th><th>상태 A/B</th></tr></thead><tbody>
+{% for r in c.pairs|sort(attribute='distance_b_m') %}<tr><td>{{ r.pair_id|replace('|','↔') }}</td><td class="r">{{ r.distance_a_m|n(2) }}</td><td class="r">{{ r.distance_b_m|n(2) }}</td><td class="r {{ cls(r.delta_m) }}">{{ '%+.2f'|format(r.delta_m) }}</td><td>{{ r.status_a }}/{{ r.status_b }}</td></tr>{% endfor %}
+</tbody></table>
+<table>{{ tcap("외벽 법선 방향 거리 (수평 최단거리와 별도 지표)") }}
+<thead><tr><th>외벽</th><th class="r">A (m)</th><th>대상 A</th><th class="r">B (m)</th><th>대상 B</th><th class="r">Δ (m)</th></tr></thead><tbody>
+{% for f in c.facade_normals if f.facade in ('S','N') %}<tr><td class="mono">{{ f.facade_id }}</td><td class="r">{{ f.distance_a_m|n(2) if f.distance_a_m is not none else '해당 방향 교차 없음' }}</td><td>{{ f.target_a or '-' }}</td><td class="r">{{ f.distance_b_m|n(2) if f.distance_b_m is not none else '해당 방향 교차 없음' }}</td><td>{{ f.target_b or '-' }}</td><td class="r {{ cls(f.delta_m) }}">{{ '%+.2f'|format(f.delta_m) if f.delta_m is not none else '-' }}</td></tr>{% endfor %}
+</tbody></table>
+<table>{{ tcap("가상 대지경계 이격 (" ~ (c.boundary_class or '') ~ ")") }}
+<thead><tr><th>주동</th><th class="r">A (m)</th><th class="r">B (m)</th><th class="r">Δ (m)</th><th>경계 내부 A/B</th></tr></thead><tbody>
+{% for r in c.boundary %}<tr><td>{{ r.building_id }}</td><td class="r">{{ r.distance_a_m|n(2) }}</td><td class="r">{{ r.distance_b_m|n(2) }}</td><td class="r {{ cls(r.delta_m) }}">{{ '%+.2f'|format(r.delta_m) }}</td><td>{{ r.inside_a }}/{{ r.inside_b }}</td></tr>
+{% else %}<tr><td colspan="5">대지경계 자료 미확보 – 계산 생략</td></tr>{% endfor %}</tbody></table>
+<div class="warn">대지경계는 가상(SYNTHETIC) 대상지 사각형이며 실제 필지 경계가 아닙니다. 접촉/중첩 쌍: {{ c.n_contact_or_overlap_b }}쌍.</div>
+{% else %}<p>이 실행에서는 C 분석을 수행하지 않았습니다. 수치를 제시하지 않습니다.</p>{% endif %}
+</section>
+
+<!-- ============================== 11 통합 ============================== -->
+<section class="chapter" id="s11">
+<h2>11. 세 분석 통합 비교</h2>
+<p>서로 다른 단위(분, m², m)의 지표를 임의 가중합한 '정답' 순위를 만들지 않고, 주동별로 각 지표를 나란히 제시하며 일조 감소·신규 음영 상위셀 원인·이격 감소가 동시에 나타나는지만 표시합니다.</p>
+{{ fig(figs.integrated, "지표 동시 발생 주동 (색 = 동시 발생 지표 수, 라벨: 일조/신규/이격).") if figs.integrated else '' }}
+<table>{{ tcap("주동별 A/B/C 지표 병렬 비교") }}
+<thead><tr><th>주동</th><th class="r">A 평균Δ(분)</th><th class="r">A 최소Δ(분)</th><th class="r">A 감소점</th><th class="r">B 상위셀 원인 수</th><th class="r">C 최대 감소(m)</th><th class="r">C 최소이격 B(m)</th><th>동시 발생</th></tr></thead><tbody>
+{% for r in sm.integrated.rows %}<tr><td>{{ r.building_id }}</td><td class="r {{ cls(r.A_mean_delta_min) }}">{{ r.A_mean_delta_min|n(1) if r.A_mean_delta_min is defined else '-' }}</td><td class="r">{{ r.A_min_delta_min|n(0) if r.A_min_delta_min is defined else '-' }}</td><td class="r">{{ r.A_n_decreased if r.A_n_decreased is defined else '-' }}</td><td class="r">{{ r.B_top_cells_caused if r.B_top_cells_caused is defined else 0 }}</td><td class="r {{ cls(r.C_min_pair_delta_m) if r.C_min_pair_delta_m is defined else '' }}">{{ r.C_min_pair_delta_m|n(2) if r.C_min_pair_delta_m is defined else '-' }}</td><td class="r">{{ r.C_min_distance_b_m|n(2) if r.C_min_distance_b_m is defined else '-' }}</td><td>{{ r.flags|join(' · ') or '-' }}</td></tr>{% endfor %}
+</tbody></table>
+<p class="small">{{ sm.integrated.note }}</p>
+</section>
+
+<!-- ============================== 12 권고 ============================== -->
+<section class="chapter" id="s12">
+<h2>12. 검토 우선순위 및 권고</h2>
+<p>아래 분류는 실제 계산된 변화가 큰 위치에 한해 부여했습니다. 분류 기준값(직사일조 감소 {{ th.sun|int }}분 이상, 공간 평균 음영 증가 {{ th.os|int }}분 이상, 이격 감소 {{ th.cl|int }} m 이상)은 <b>본 PoC의 검토 우선순위 정렬용 임의 기준이며 법적 기준이 아닙니다</b>. 어떤 항목도 법적 위반·침해를 확정하지 않습니다.</p>
+<table>{{ tcap("검토 우선순위 및 권고 목록") }}
+<thead><tr><th style="width:30mm">구분</th><th>대상</th><th>근거(계산값)</th><th>원인/비고</th></tr></thead><tbody>
+{% for r in recs %}<tr><td>{{ r.level }}</td><td>{{ r.target }}</td><td>{{ r.basis }}</td><td>{{ r.cause }}</td></tr>{% endfor %}
+</tbody></table>
+<div class="note">'설계자 재검토 권고'는 배치·층수 조정 대안 검토를, '정밀 검토 필요'는 실측 자료와 법령·조례 기준에 따른 전문 검토를, '자료 추가 확보 필요'는 결과 신뢰도 향상에 필요한 입력 자료를 의미합니다.</div>
+</section>
+
+<!-- ============================== 13 민감도 ============================== -->
+<section class="chapter" id="s13">
+<h2>13. 민감도·불확실성</h2>
+{% if sm.sensitivity %}
+<p>{{ sm.sensitivity.note }} 모든 사례는 A와 B 전체를 동일 규칙으로 다시 계산한 결과입니다.</p>
+<table>{{ tcap("민감도 시험 결과") }}
+<thead><tr><th>사례</th>{% if sm.A %}<th class="r">A 평균(분)</th><th class="r">B 평균(분)</th><th class="r">감소점</th><th class="r">최소Δ(분)</th>{% endif %}{% if sm.B %}<th class="r">평균음영 A</th><th class="r">평균음영 B</th><th class="r">최대 신규(m²)</th><th class="r">음영증가(m²)</th>{% endif %}</tr></thead><tbody>
+{% for cse in sm.sensitivity.cases %}<tr><td>{{ cse.case }}</td>{% if sm.A %}<td class="r">{{ cse.A_mean_total_min_a|n(1) }}</td><td class="r">{{ cse.A_mean_total_min_b|n(1) }}</td><td class="r">{{ cse.A_n_decreased }}</td><td class="r">{{ cse.A_delta_total_min_min|n(0) }}</td>{% endif %}{% if sm.B %}<td class="r">{{ cse.B_mean_shade_min_a|n(1) }}</td><td class="r">{{ cse.B_mean_shade_min_b|n(1) }}</td><td class="r">{{ cse.B_max_new_shade_area_m2|n(0) }}</td><td class="r">{{ cse.B_area_more_shade_m2|n(0) }}</td>{% endif %}</tr>{% endfor %}
+</tbody></table>
+{{ fig(figs.sens, "민감도 사례별 주요 지표 (첫 막대 = 기준 사례).") if figs.sens else '' }}
+{% set base = sm.sensitivity.cases[0] %}{% set one = sm.sensitivity.cases[1] %}
+<ul class="tight">
+{% if sm.A %}<li>시간간격: Δt=1분 대비 기준(Δt={{ sm.params.interval_min }}분)의 B안 평균 총 직사일조 차이 {{ (base.A_mean_total_min_b - one.A_mean_total_min_b)|round(2) }}분, 감소 수광점 수 차이 {{ base.A_n_decreased - one.A_n_decreased }}개. 실제 값이 다르면 그대로 기록했습니다.</li>{% endif %}
+<li>가상 계획지반고 ±1 m/±3 m: 단지 전체(주동·수광점·격자)가 함께 오르내리므로 단지 내부 상대 기하는 불변이며, 주변 참고건물·지형과의 상대고도만 변합니다. 이는 실제 DEM 오차 통계가 아닙니다.</li>
+<li>형상 미세변화: 변경 주동을 0.5 m 동쪽으로 추가 이동한 결과로 결과의 형상 민감도를 보여줍니다.</li>
+</ul>
+{% else %}<p>이 실행에서는 민감도 시험을 수행하지 않았습니다.</p>{% endif %}
+<h3>불확실성 요인</h3>
+<table>{{ tcap("주요 불확실성과 영향 방향") }}<thead><tr><th>요인</th><th>내용</th><th>영향</th></tr></thead><tbody>
+<tr><td>30 m DEM</td><td>국지 지형 기복·옹벽·단차 미표현, 수직기준 {{ sm.terrain.vertical_datum_status }}</td><td>지형 차폐·지반고 오차 (주로 단지 외곽)</td></tr>
+<tr><td>가상 계획지반</td><td>평탄 pad 가정 (실제 계획고 미확보)</td><td>주동 간 상대고도 차이 미반영</td></tr>
+<tr><td>분석 범위</td><td>{{ (sm.ground.region_half_extent_m*2/1000)|round(1) }} km 밖 지형, 실제 주변 건물·수목 미반영</td><td>일조 과대평가 가능 (차폐 누락)</td></tr>
+<tr><td>외벽 대리지점</td><td>창호 위치·발코니 깊이 미반영</td><td>세대별 일조와 다를 수 있음</td></tr>
+<tr><td>시간 이산화</td><td>구간 중점 규칙 ±Δt/2</td><td>전이당 최대 ±{{ sm.params.interval_min / 2 }}분</td></tr></tbody></table>
+</section>
+
+<!-- ============================== 14 QA ============================== -->
+<section class="chapter" id="s14">
+<h2>14. 검증 및 품질보증(QA)</h2>
+<p>분석 실행 중 자동 수행된 검증 항목입니다. 통과 {{ qa.n_pass }}건 / 실패 {{ qa.n_fail }}건{% if qa.critical_fail %}, <span class="fail">치명 실패: {{ qa.critical_fail|join(', ') }}</span>{% endif %}.</p>
+<table>{{ tcap("분석 실행 내 자동 QA") }}
+<thead><tr><th>검증 항목</th><th>결과</th><th>구분</th><th>세부 값</th></tr></thead><tbody>
+{% for c in qa.checks %}<tr><td>{{ c.name }}</td><td class="{{ 'pass' if c.status == 'PASS' else 'fail' }}">{{ c.status }}</td><td>{{ '치명' if c.critical else '참고' }}</td><td class="small">{% if c.detail is mapping %}{% for k, v in c.detail.items() if k not in ('engines','note') %}{{ k }}={{ v if v is not number else (v|round(4)) }}{{ '; ' if not loop.last }}{% endfor %}{% else %}{{ c.detail }}{% endif %}</td></tr>{% endfor %}
+</tbody></table>
+<h3>PDF 산출물 검증</h3>
+{% if pdf_check_prev %}
+<table>{{ tcap("직전 렌더링 PDF 자동 검증 (목차 안정화 반복 렌더링 중 직전 회차, 최종본 검증은 quality_check.json)") }}<tbody>
+<tr><th style="width:60mm">파일 존재 / 크기</th><td>{{ pdf_check_prev.exists }} / {{ "{:,}".format(pdf_check_prev.size_bytes) }} bytes</td></tr>
+<tr><th>페이지 수</th><td>{{ pdf_check_prev.pages }}</td></tr>
+<tr><th>첫 페이지 제목 포함</th><td>{{ pdf_check_prev.first_page_has_title }}</td></tr>
+<tr><th>한글 텍스트 추출 (글자 수)</th><td>{{ pdf_check_prev.korean_text_extractable }} ({{ "{:,}".format(pdf_check_prev.hangul_chars_extracted) }})</td></tr>
+<tr><th>장 제목 누락</th><td>{{ pdf_check_prev.missing_markers|join(', ') if pdf_check_prev.missing_markers else '없음' }}</td></tr></tbody></table>
+{% else %}<p>PDF 검증 결과는 최종 렌더링 후 quality_check.json에 기록됩니다.</p>{% endif %}
+<h3>3D 장면 캡처</h3>
+{% if capture.ok %}<figure><img src="data:image/png;base64,{{ capture_b64 }}" style="max-width:100%" alt="Cesium 3D 장면 캡처"><figcaption>Cesium WebGL 3D 장면 캡처 (시각 참고용, 수치 아님).</figcaption></figure>
+{% else %}<div class="note">Cesium WebGL 화면 캡처를 포함하지 않았습니다 (사유: {{ capture.reason }}). 보고서의 지도는 모두 결과값으로 서버에서 생성한 정적 2D 분석지도이며 보고서 생성은 정상 진행되었습니다.</div>{% endif %}
+<div class="note">단위·기하 테스트(pytest)와 E2E 시험 기록은 저장소의 docs/QA_RESULTS.md에 실제 실행 명령과 결과로 기록됩니다.</div>
+</section>
+
+<!-- ============================== 15 제약 ============================== -->
+<section class="chapter" id="s15">
+<h2>15. 제약과 면책</h2>
+<ul class="tight">
+<li><b>가상 PoC.</b> {{ disclaimer }}</li>
+<li><b>지형.</b> {% if sm.terrain.data_class == 'SYNTHETIC' %}지형은 합성(SYNTHETIC) 30 m DEM으로, 인천계양의 실제 지형이 아닙니다.{% else %}업로드된 30 m DEM은 원자료의 정확도·수직기준({{ sm.terrain.vertical_datum_status }}) 한계를 그대로 가집니다.{% endif %} 30 m 해상도는 단지 규모의 국지 지형을 표현하지 못하며, 2 m 격자 보간은 정확도를 높이지 않습니다.</li>
+<li><b>단지 데이터.</b> 주동·주변건물·대지경계·놀이터·휴게공간은 모두 가상 자료입니다. LH 단지배치도·공급자료로부터 정밀 3D 형상, 창호 좌표, 실제 설계변경을 알 수 있다고 주장하지 않습니다.</li>
+<li><b>미반영 요소.</b> 모델 범위 밖 건물·산지, 수목, 담장·옹벽, 발코니·돌출부.</li>
+<li><b>수광점.</b> 창호 부재로 외벽 대리지점(facade_proxy)을 사용했으며 '세대별 일조'가 아닙니다.</li>
+<li><b>지표 의미.</b> 기하학적 직사일조 가능 시간이며 일사량·실내 조도·기상 반영 일조가 아닙니다.</li>
+<li><b>법적 판단.</b> 건축법 제61조(일조 등의 확보를 위한 건축물의 높이 제한)·시행령 제86조는 참고 검토항목일 뿐, 본 보고서는 법령·지자체 조례·건축조건을 검토하지 않았으며 적합/부적합, 인허가 가능 여부, 일조권 침해를 판정하지 않습니다.</li>
+<li><b>범위 밖.</b> 소음, 바람, 실내 자연채광, 에너지, 자동 인허가, 드론/위성 변화탐지, 영상 기반 건물 추출.</li>
+</ul>
+</section>
+
+<!-- ============================== 16 출처·부록 ============================== -->
+<section class="chapter" id="s16">
+<h2>16. 출처 및 부록</h2>
+<table>{{ tcap("자료 출처") }}<thead><tr><th>대상</th><th>분류</th><th>출처</th><th>접근일</th><th>라이선스/비고</th></tr></thead><tbody>
+{% for p in prov %}<tr><td>{{ p.subject }}</td><td>{{ dc(p.data_class) }}</td><td>{{ p.source }}{% if p.url %}<br><span class="mono">{{ p.url }}</span>{% endif %}</td><td>{{ p.accessed or '-' }}</td><td>{{ p.license or '-' }}{% if p.note %}<br><span class="small">{{ p.note }}</span>{% endif %}</td></tr>{% endfor %}
+<tr><td>태양위치</td><td>-</td><td>pvlib python {{ sm.provenance.dependencies.pvlib }} (NREL SPA)</td><td>-</td><td>BSD-3</td></tr>
+<tr><td>광선교차</td><td>-</td><td>Open3D {{ sm.provenance.dependencies.open3d }} RaycastingScene</td><td>-</td><td>MIT</td></tr>
+<tr><td>참고 법령</td><td>-</td><td>국가법령정보센터 건축법 제61조, 시행령 제86조 (https://www.law.go.kr/)</td><td>-</td><td>참고만, 판정 미수행</td></tr>
+</tbody></table>
+<table>{{ tcap("계산 파라미터") }}<tbody>
+{% for k, v in sm.params.items() %}<tr><th style="width:60mm">{{ k }}</th><td>{{ v }}</td></tr>{% endfor %}
+<tr><th>receiver 간격 / 창 중심 높이</th><td>7.5 m 이하 / 층 바닥 +1.5 m, 층고 2.9 m, 파라펫 1.2 m</td></tr>
+<tr><th>지형 모델 영역 / 메쉬</th><td>±{{ sm.ground.region_half_extent_m }} m / {{ sm.ground.mesh_spacing_m }} m</td></tr></tbody></table>
+<table>{{ tcap("요구 17개 항목 대응표") }}<thead><tr><th>요구 항목</th><th>본 보고서 위치</th></tr></thead><tbody>
+<tr><td>1 표지</td><td>표지</td></tr><tr><td>2 문서관리</td><td>1장</td></tr><tr><td>3 요약</td><td>2장</td></tr><tr><td>4 배경·목적</td><td>3장</td></tr>
+<tr><td>5 지역·대상</td><td>4장</td></tr><tr><td>6 데이터 인벤토리·품질</td><td>5장</td></tr><tr><td>7 시나리오 정의</td><td>6장</td></tr><tr><td>8 공통 방법론</td><td>7장</td></tr>
+<tr><td>9 A 직사일조</td><td>8장</td></tr><tr><td>10 B 그림자</td><td>9장</td></tr><tr><td>11 C 이격</td><td>10장</td></tr><tr><td>12 통합 비교</td><td>11장</td></tr>
+<tr><td>13 우선순위·권고</td><td>12장</td></tr><tr><td>14 민감도·불확실성</td><td>13장</td></tr><tr><td>15 검증/QA</td><td>14장</td></tr><tr><td>16 제약·면책</td><td>15장</td></tr><tr><td>17 출처/부록</td><td>16장</td></tr></tbody></table>
+<h3>원자료·결과 파일 (증거 패키지 ZIP 구성)</h3>
+<table>{{ tcap("분석 결과 파일 목록") }}<thead><tr><th>파일</th><th>내용</th></tr></thead><tbody>
+<tr><td class="mono">analysis_summary.json</td><td>전체 결과 요약(보고서 수치의 원천)</td></tr>
+<tr><td class="mono">quality_check.json</td><td>분석 QA + PDF 검증 결과</td></tr>
+<tr><td class="mono">manifest.json</td><td>파일 목록·SHA-256·재현 방법</td></tr>
+<tr><td class="mono">data/sunlight_receivers.csv</td><td>A 수광점별 전체 결과</td></tr>
+<tr><td class="mono">data/sunlight_per_floor.csv · sunlight_per_building.csv</td><td>A 층별·주동별 집계</td></tr>
+<tr><td class="mono">data/shadow_grid_cells.csv · shadow_grid_changed.geojson · shadow_area_curve.csv</td><td>B 격자별 결과·면적 곡선</td></tr>
+<tr><td class="mono">data/clearance_pairs.csv · clearance_facade_normals.csv · clearance_boundary.csv</td><td>C 건물쌍·법선·경계 이격</td></tr>
+<tr><td class="mono">data/buildings_A.geojson · buildings_B.geojson · scene_snapshot.json</td><td>건물/시나리오 메타데이터 (WGS84 / ENU)</td></tr>
+<tr><td class="mono">data/sensitivity.csv</td><td>민감도 시험</td></tr>
+<tr><td class="mono">figures/*.svg · *.png</td><td>본 보고서의 지도·차트</td></tr></tbody></table>
+<h3>재현 실행 방법</h3>
+<ol class="tight mono">{% for c in [ "cd backend && uv sync", "uv run python -m scripts.seed_demo", "uv run uvicorn app.main:app --port 8000 / uv run python -m app.worker", "POST /api/projects/{id}/analyses (analysis_type=ALL, date=" ~ sm.params.date ~ ", interval_min=" ~ sm.params.interval_min ~ ", grid_spacing_m=" ~ sm.params.grid_spacing_m ~ ")", "POST /api/analyses/{run_id}/reports → GET /api/reports/{id}/download?format=pdf|html|zip" ] %}<li>{{ c }}</li>{% endfor %}</ol>
+{% if per_floor %}
+<h3>부록 A. 층별 직사일조 집계 (변경 주동 및 감소 발생 주동)</h3>
+<table>{{ tcap("층별 직사일조 (전체 수광점별 표는 sunlight_receivers.csv)") }}
+<thead><tr><th>주동</th><th class="r">층</th><th class="r">수광점</th><th class="r">평균 A(분)</th><th class="r">평균 B(분)</th><th class="r">평균 Δ</th><th class="r">최소 Δ</th><th class="r">감소점</th></tr></thead><tbody>
+{% for r in per_floor %}<tr><td>{{ r.building_id }}</td><td class="r">{{ r.floor }}</td><td class="r">{{ r.n_receivers }}</td><td class="r">{{ r.mean_total_min_a }}</td><td class="r">{{ r.mean_total_min_b }}</td><td class="r {{ cls(r.mean_delta_min|float) }}">{{ r.mean_delta_min }}</td><td class="r">{{ r.min_delta_min }}</td><td class="r">{{ r.n_decreased }}</td></tr>{% endfor %}
+</tbody></table>{% endif %}
+<h3>부록 B. 분석 실행 로그</h3>
+<table>{{ tcap("분석 작업 로그 (요약)") }}<thead><tr><th>경과(s)</th><th class="r">진행률</th><th>단계</th><th>메시지</th></tr></thead><tbody>
+{% for l in run_logs if l.stage != '오류' %}<tr><td>{{ l.elapsed_s if l.elapsed_s is defined else '-' }}</td><td class="r">{{ l.pct if l.pct is defined else '-' }}</td><td>{{ l.stage }}</td><td class="small">{{ l.msg }}</td></tr>{% endfor %}
+</tbody></table>
+<p class="small" style="margin-top:6mm">— 보고서 끝 · {{ meta.report_id }} · {{ meta.generated_at }} · JIRISO DATA STUDIO —</p>
+</section>
+</main>
+</body>
+</html>

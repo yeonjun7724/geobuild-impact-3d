@@ -1,0 +1,321 @@
+{
+ "report_id": "3ead6b0e5d4c",
+ "run_id": "87dfd0b98dc0",
+ "version": "1.0",
+ "generated_at": "2026-11-18T04:39:24+00:00",
+ "title": "GeoBuild Impact 3D 설계변경 영향 기술보고서",
+ "disclaimer": "인천계양 A2블록 주변을 배경으로 한 가상 공동주택 설계변경 검증 PoC. 실제 LH 설계안, 인허가 검토, 공식 성능평가 결과가 아님.",
+ "engine": {
+  "engine": "GeoBuild Impact 3D analysis engine",
+  "engine_version": "0.1.0",
+  "algorithm_version": "abc-2026.11.2",
+  "commit": "ca434b052170bf657af62f1c8b07f0c1f30961d1"
+ },
+ "dependencies": {
+  "python": "3.12.13",
+  "numpy": "2.5.5",
+  "open3d": "0.20.0",
+  "pvlib": "0.16.1",
+  "shapely": "2.2.0",
+  "pyproj": "3.8.0",
+  "rasterio": "1.5.2",
+  "trimesh": "5.2.1",
+  "fastapi": "0.163.2",
+  "sqlalchemy": "2.1.9",
+  "rq": "3.0.0",
+  "playwright": "1.65.2",
+  "matplotlib": "3.11.2"
+ },
+ "input_hashes": {
+  "terrain_sha256": "5af51a8333f43e283946269306278545d6fb58288a36e970840395f32ea620d3",
+  "geometry_hash_a": "2032e7e82226f43f0c1bb25b0216adb5534a69e38636b27c2fb1e191dc8936de",
+  "geometry_hash_b": "efb2fd7cf4324a4093ea8d33ef63d2e1b8a6d6eab0bbd771cb0f480393335f70",
+  "scenario_hash_a": "f617e651e955df61a06a0a26eac443a85dbf85a89c62a7afd8df32ac0680497a",
+  "scenario_hash_b": "8cdeeece7d5a815680c5562cfd1d89f77818c00701be7a7c2d0952f9d67eb853"
+ },
+ "cache_key": "74bac7f8052a4714cec79ebe6826294908c81456e25e570b5f43f8fdb95e2fe4",
+ "pdf": {
+  "pages": 37,
+  "size_bytes": 1376584
+ },
+ "reproduce": [
+  "cd backend && uv sync",
+  "uv run python -m scripts.seed_demo   # 프로젝트 생성 + 합성 DEM + 가상 단지",
+  "uv run uvicorn app.main:app --port 8000  &  uv run python -m app.worker",
+  "POST /api/projects/{id}/analyses {analysis_type:'ALL', date:'2026-12-22', start:'08:00', end:'16:00', interval_min:5, grid_spacing_m:2}",
+  "POST /api/analyses/{run_id}/reports  →  GET /api/reports/{report_id}/download?format=pdf|html|zip",
+  "동일 입력은 동일 cache_key·동일 수치를 산출 (analysis_summary.json 대조)"
+ ],
+ "files": [
+  {
+   "path": "GeoBuild_Impact_3D_Report_87dfd0b98dc0.pdf",
+   "size_bytes": 1376584,
+   "sha256": "4f62bcae2ba29ecbab7ecb098153812d8938ffbe617ce51e927b5eeeb3031e23"
+  },
+  {
+   "path": "GeoBuild_Impact_3D_Report_87dfd0b98dc0.html",
+   "size_bytes": 1409717,
+   "sha256": "45de108fb89bb67d5f7320ac5b6436319935bae92501c4599608c3ddc49b2e96"
+  },
+  {
+   "path": "analysis_summary.json",
+   "size_bytes": 132835,
+   "sha256": "c1f0534df575e8a6059c2ae0d60d7895a9d34c03d18fef9032c2caa876f5852f"
+  },
+  {
+   "path": "quality_check.json",
+   "size_bytes": 5600,
+   "sha256": "70566ef19bab30d85b87b56abc64243e6d993386faa40fd05067987734dbb44d"
+  },
+  {
+   "path": "data/sunlight_receivers.csv",
+   "size_bytes": 421651,
+   "sha256": "9f906b7563aeb7d85a741ac45e9a4aa8d97f3034b106b216ea1e121c337ecfce"
+  },
+  {
+   "path": "data/sunlight_per_floor.csv",
+   "size_bytes": 5441,
+   "sha256": "4ddb48732cf538c82548a6ebfcfbfaa3a946e410326081ced389d8f81b211822"
+  },
+  {
+   "path": "data/sunlight_per_building.csv",
+   "size_bytes": 617,
+   "sha256": "ca6dc4c8fd3413b83f4eca7246c0e398bee27453c03c5823a07dec5e44a57da1"
+  },
+  {
+   "path": "data/shadow_grid_cells.csv",
+   "size_bytes": 781751,
+   "sha256": "56a5e9db4bafb3ef5dc1dfc396b18565722c42a483b855218dc380e75d02b605"
+  },
+  {
+   "path": "data/shadow_grid_changed.geojson",
+   "size_bytes": 5532571,
+   "sha256": "c820886b73b9e9d214e44c01b80b10a0bf481aa70fcd4ad2a77f96fcf9ec66eb"
+  },
+  {
+   "path": "data/shadow_area_curve.csv",
+   "size_bytes": 3848,
+   "sha256": "37f83d30495b6367d43e25318e0003d1b77d6c4c905e7335003f8b0ee4acf65e"
+  },
+  {
+   "path": "data/clearance_pairs.csv",
+   "size_bytes": 2817,
+   "sha256": "0b632d9d5c2dc72f3b6baf918e4700ceaed0bbbf14f709a09675da4d3bfe94c4"
+  },
+  {
+   "path": "data/clearance_facade_normals.csv",
+   "size_bytes": 1441,
+   "sha256": "d269fdc8edc669332bac98bc5361231474e39f015f17464e963ec0d2dfd80eda"
+  },
+  {
+   "path": "data/clearance_boundary.csv",
+   "size_bytes": 283,
+   "sha256": "de0e7a0c5723bb37a71d65d5b4043b69e50dfb507566ac0c954a1d98fae80500"
+  },
+  {
+   "path": "data/buildings_A.geojson",
+   "size_bytes": 11169,
+   "sha256": "3ac8e305b2447effda1d7be51850acf25502cee97225046388a88febc9dbcd70"
+  },
+  {
+   "path": "data/buildings_B.geojson",
+   "size_bytes": 11182,
+   "sha256": "b2eebc768f042a41e4a39ba93baff6ed813452cc82277eb007f8baa8a00e055f"
+  },
+  {
+   "path": "data/sensitivity.csv",
+   "size_bytes": 792,
+   "sha256": "a8ec90ce8ed287700299938addc2a63c9d428cecff8481786b5dd0e9716694b8"
+  },
+  {
+   "path": "data/scene_snapshot.json",
+   "size_bytes": 22965,
+   "sha256": "3709c87453ead8e47df4a99151e680c39c48e33a653c2af071b72a540e527831"
+  },
+  {
+   "path": "figures/f00_cesium_capture.png",
+   "size_bytes": 123913,
+   "sha256": "05b534408263e500e94e9860c49eaee0d58c8b723fc458972219f4d694772cb1"
+  },
+  {
+   "path": "figures/f04_location.png",
+   "size_bytes": 45813,
+   "sha256": "c330b40003f9701383b7b9c1057c8b3b970186dbe944b0b71acf078720461336"
+  },
+  {
+   "path": "figures/f04_location.svg",
+   "size_bytes": 12863,
+   "sha256": "ea7529f663ce4c88c731c6ba5ad10c2174f41fbb4cc91bf6a14bd5b9097c411e"
+  },
+  {
+   "path": "figures/f05_terrain.png",
+   "size_bytes": 371584,
+   "sha256": "ced97a0a0d0fcc5fe27389a4339ba8d32add55022dfa0a201f01bb73233e50d8"
+  },
+  {
+   "path": "figures/f05_terrain.svg",
+   "size_bytes": 543943,
+   "sha256": "328f76c88a91d76b436df25c379ea18f450ec25e01bc3cafb9916ac607350a05"
+  },
+  {
+   "path": "figures/f06_layout_ab.png",
+   "size_bytes": 61806,
+   "sha256": "12bb21d2e96d699d4e4338562ef1459a212e01a9a8af520dfa112df4e77f80e9"
+  },
+  {
+   "path": "figures/f06_layout_ab.svg",
+   "size_bytes": 35014,
+   "sha256": "6bf037f71671d79f89b7920310c910ad1ab7aae95ff0cef2cfdc05579c3eb3e9"
+  },
+  {
+   "path": "figures/f07_sunpath.png",
+   "size_bytes": 39599,
+   "sha256": "30052636769820b0678b72715e9abaae65fb8cda331b05649e12188825f7f3cc"
+  },
+  {
+   "path": "figures/f07_sunpath.svg",
+   "size_bytes": 13592,
+   "sha256": "e7a1b155144403f16738c5298e0963b5d1adbcebba8864d383e18946940c0636"
+  },
+  {
+   "path": "figures/f08_facade_0.png",
+   "size_bytes": 46689,
+   "sha256": "c94d6a0168585008486dff891d38197cdb3981f3cecd44ce883b659b5cdac0da"
+  },
+  {
+   "path": "figures/f08_facade_0.svg",
+   "size_bytes": 39538,
+   "sha256": "28f35482f2d4241693e7f0e324309bdb9e4f4958dddf3d57f76b5c597782d1da"
+  },
+  {
+   "path": "figures/f08_facade_1.png",
+   "size_bytes": 44621,
+   "sha256": "9e41fce536e6bd68f3b731969bead8c66aa88a25b42ed7c4735a5f32b078a9d6"
+  },
+  {
+   "path": "figures/f08_facade_1.svg",
+   "size_bytes": 36627,
+   "sha256": "54a503d83e9b00dd58ad3d62abd37aefd74b6d72a8e544ff221bd241812bc5f0"
+  },
+  {
+   "path": "figures/f08_sun_bars.png",
+   "size_bytes": 43588,
+   "sha256": "fb6a367d873547f58db0216e889b911a20ef54f82653abcb62d134fd0e539aa4"
+  },
+  {
+   "path": "figures/f08_sun_bars.svg",
+   "size_bytes": 27400,
+   "sha256": "e6fc389a40732e7c91cbd6768c3ce8752db108e430c4ea410d8aa2b8e10dc279"
+  },
+  {
+   "path": "figures/f08_sun_hist.png",
+   "size_bytes": 20827,
+   "sha256": "d929bf81c38e1941d0248facb5f560408e4480d0574a9b1b21fec0c2dda9d732"
+  },
+  {
+   "path": "figures/f08_sun_hist.svg",
+   "size_bytes": 21477,
+   "sha256": "9e9d94d9e0b3f8bf9dceb99cd9eb67b5289fe8e99aad8cdc87a0ab1076634ef6"
+  },
+  {
+   "path": "figures/f08_sun_map.png",
+   "size_bytes": 73381,
+   "sha256": "728243174eaaaf1f20c5ecdf852ae7e064675cc65f597742840ca9342968945c"
+  },
+  {
+   "path": "figures/f08_sun_map.svg",
+   "size_bytes": 49020,
+   "sha256": "2706709142dee690f2493f845ae63b1560c6d5dcbcd3a1feafe95b3293322174"
+  },
+  {
+   "path": "figures/f08_sun_timeheat.png",
+   "size_bytes": 46865,
+   "sha256": "1ace10a331cf25c8a2cd660916060ae3c46b669885d6dfa44484f9557d9dd88e"
+  },
+  {
+   "path": "figures/f08_sun_timeheat.svg",
+   "size_bytes": 25285,
+   "sha256": "7627061a0454644957759748686e56af499c36da64128c25596b3f2403345c6b"
+  },
+  {
+   "path": "figures/f09_shadow_cum.png",
+   "size_bytes": 84127,
+   "sha256": "d6b66e13daa93431665e4466b2e7f66e9790f98eff2efba66245a269b614b7d7"
+  },
+  {
+   "path": "figures/f09_shadow_cum.svg",
+   "size_bytes": 81970,
+   "sha256": "33595968addcbba52e8c17b053238168840bd19a6da6f0e9862be9bdc9279430"
+  },
+  {
+   "path": "figures/f09_shadow_curve.png",
+   "size_bytes": 78978,
+   "sha256": "cfbcad3361d55de7d389715d80676804e1e2fe11f7428ef9e1e1ce1484bf4b57"
+  },
+  {
+   "path": "figures/f09_shadow_curve.svg",
+   "size_bytes": 29651,
+   "sha256": "8781741fa18ce7301b5129a0564510f4d17746560079e496b85fbf9f66f6669a"
+  },
+  {
+   "path": "figures/f09_shadow_delta.png",
+   "size_bytes": 76315,
+   "sha256": "5d3b551d1fe45b6f0867995759bbe31505c4dfbf3cb932ef14d0b0638e43e598"
+  },
+  {
+   "path": "figures/f09_shadow_delta.svg",
+   "size_bytes": 50838,
+   "sha256": "bc8c06fb92af974d7742a16f6ce183cc8dfced11612f2f309e1403e5692308bd"
+  },
+  {
+   "path": "figures/f09_shadow_states.png",
+   "size_bytes": 50620,
+   "sha256": "406fddd65659a774a58eaa84ac3986bcd04c76a0a31fa5c937b20e3eb2034f40"
+  },
+  {
+   "path": "figures/f09_shadow_states.svg",
+   "size_bytes": 38710,
+   "sha256": "f0ca947261394a1c0e07779767445b04c2a87a58bcd13672812565bdb4f386b8"
+  },
+  {
+   "path": "figures/f10_clearance_bars.png",
+   "size_bytes": 36227,
+   "sha256": "4dc23a742004cbe8d326899a33e9b72faa6b5551b511e9c7a26ef294b70ed370"
+  },
+  {
+   "path": "figures/f10_clearance_bars.svg",
+   "size_bytes": 18136,
+   "sha256": "7efe2425d2ae953db3099bc7a0527b8b9a62ac94868550c11e649cbc837b4a22"
+  },
+  {
+   "path": "figures/f10_clearance_map.png",
+   "size_bytes": 77088,
+   "sha256": "97cdc46159b7b1384fd049e227e6cd39a75932316931c5a77d3ae0fa81a8b385"
+  },
+  {
+   "path": "figures/f10_clearance_map.svg",
+   "size_bytes": 58642,
+   "sha256": "54d1d384ec60d099b7adef5113d90dad9f84705f459f4e9b6d4f76b6b53fc7e9"
+  },
+  {
+   "path": "figures/f11_integrated.png",
+   "size_bytes": 50358,
+   "sha256": "0993701d81117aa9f56cae4ab2ca64f16f848fceb75553d11495db1423292ae3"
+  },
+  {
+   "path": "figures/f11_integrated.svg",
+   "size_bytes": 20325,
+   "sha256": "31cec8df97b3c0c6bf6a1c2eed9ec63dab5b3a74b140c145a2c39793f34c5d24"
+  },
+  {
+   "path": "figures/f13_sensitivity.png",
+   "size_bytes": 50089,
+   "sha256": "bfc1fcff97e5191bd72886c000e1d87fd5898e03663fcf78b38c5099d303d738"
+  },
+  {
+   "path": "figures/f13_sensitivity.svg",
+   "size_bytes": 35352,
+   "sha256": "1d497622a51917ee805808ef8521158a9fe4d802d916e2d75d12da3ef06fe3e4"
+  }
+ ]
+}

@@ -1,0 +1,213 @@
+{
+ "analysis_qa": {
+  "run_id": "87dfd0b98dc0",
+  "checks": [
+   {
+    "name": "C: A==A 이격 delta 0",
+    "status": "PASS",
+    "critical": true,
+    "detail": {
+     "n_pairs": 21
+    }
+   },
+   {
+    "name": "A: A==B(동일 입력) 직사일조 delta 0",
+    "status": "PASS",
+    "critical": true,
+    "detail": {
+     "n_receivers": 2698,
+     "n_decreased": 0,
+     "n_increased": 0
+    }
+   },
+   {
+    "name": "A: 수광점 자가교차 방지 offset",
+    "status": "PASS",
+    "critical": true,
+    "detail": {
+     "n_rays": 1349,
+     "offset_m": 0.02,
+     "self_hits_eps0": 1217,
+     "self_hits_managed": 0,
+     "sun_time_index": 54
+    }
+   },
+   {
+    "name": "A: Open3D vs 독립 Möller–Trumbore 교차검증(건물 메쉬)",
+    "status": "PASS",
+    "critical": true,
+    "detail": {
+     "n_rays": 600,
+     "hit_agreement_ratio": 1.0,
+     "label_agreement_ratio": 1.0,
+     "n_disagree": 0,
+     "engines": [
+      "open3d.t.geometry.RaycastingScene",
+      "numpy Möller–Trumbore (reference)"
+     ]
+    }
+   },
+   {
+    "name": "B: A==B(동일 입력) 신규음영·해소 면적 0",
+    "status": "PASS",
+    "critical": true,
+    "detail": {
+     "max_new": 0.0,
+     "max_relieved": 0.0
+    }
+   },
+   {
+    "name": "B: A/B 공통 분모(유효격자) 일치",
+    "status": "PASS",
+    "critical": true,
+    "detail": {
+     "cells": 20774,
+     "valid_area_m2": 83096.0
+    }
+   },
+   {
+    "name": "해석해: 기둥 그림자 L=H/tan(α) (정오)",
+    "status": "PASS",
+    "critical": true,
+    "detail": {
+     "height_m": 30.0,
+     "sun_elevation_deg": 28.591,
+     "sun_azimuth_deg": 171.8088,
+     "analytic_tip_m": 55.55,
+     "raycast_tip_m": 55.54,
+     "abs_error_m": 0.01,
+     "shadow_azimuth_deg": 351.809,
+     "engine": "open3d.t.geometry.RaycastingScene"
+    }
+   },
+   {
+    "name": "그림자 방향: 북반구 겨울 정오 그림자는 북쪽(방위 0°±25°)",
+    "status": "PASS",
+    "critical": true,
+    "detail": {
+     "shadow_azimuth_deg": 351.809
+    }
+   },
+   {
+    "name": "좌표 ENU↔ECEF↔WGS84 round-trip",
+    "status": "PASS",
+    "critical": true,
+    "detail": {
+     "max_error_geodetic_roundtrip_m": 1.4844658835500013e-09,
+     "max_error_ecef_roundtrip_m": 1.9664092576476833e-10,
+     "n_points": 6
+    }
+   },
+   {
+    "name": "태양벡터 단위길이·정오 남중 방위",
+    "status": "PASS",
+    "critical": true,
+    "detail": {
+     "max_norm_error": 2.220446049250313e-16,
+     "noon_azimuth_deg": 171.80877240907364,
+     "noon_elevation_deg": 28.59101717545224
+    }
+   },
+   {
+    "name": "수직기준 상태 기록",
+    "status": "PASS",
+    "critical": false,
+    "detail": {
+     "vertical_datum": "미확인",
+     "status": "UNRESOLVED"
+    }
+   },
+   {
+    "name": "단지 접합부 경사 QA (≤20°)",
+    "status": "PASS",
+    "critical": false,
+    "detail": {
+     "max_deg": 8.43833751883829
+    }
+   },
+   {
+    "name": "분석영역 밖 차폐 경고",
+    "status": "FAIL",
+    "critical": false,
+    "detail": {
+     "region_edge_max_elevation_angle_deg": 2.649,
+     "interior_terrain_max_elevation_angle_deg": 6.042,
+     "min_sun_elevation_in_window_deg": 2.526,
+     "outside_region_obstruction_possible": true,
+     "note": "모델 경계 밖 지형·건물은 미반영. 경계 고도각이 최소 태양고도에 근접하면 외곽 차폐 가능성이 있음."
+    }
+   }
+  ],
+  "n_pass": 12,
+  "n_fail": 1,
+  "critical_fail": [],
+  "data_classes": {
+   "terrain": "USER_UPLOADED",
+   "buildings": [
+    "SYNTHETIC"
+   ],
+   "location": "REAL_OFFICIAL (대표점만)",
+   "site_boundary": "SYNTHETIC",
+   "open_spaces": "SYNTHETIC",
+   "ground_pad": "DERIVED (가상 지반 가정)"
+  },
+  "verification_status": "VERIFIED_AUTOMATED_QA"
+ },
+ "report_pdf_qa": {
+  "exists": true,
+  "size_bytes": 1376584,
+  "pages": 37,
+  "first_page_has_title": true,
+  "hangul_chars_extracted": 9827,
+  "korean_text_extractable": true,
+  "embedded_images": 22,
+  "missing_markers": [],
+  "ok": true,
+  "toc_consistent_after_rerender": true,
+  "render_passes": 2,
+  "toc_pages": {
+   "1. 문서관리": 3,
+   "2. 요약 (Executive Summary)": 4,
+   "3. 분석 배경과 목적": 5,
+   "4. 대상 지역 및 대상 주동": 6,
+   "5. 데이터 인벤토리 및 품질": 8,
+   "6. 설계 시나리오 정의": 10,
+   "7. 공통 분석 방법론": 11,
+   "8. A. 직사일조 상세 결과": 13,
+   "9. B. 그림자 변화 상세 결과": 18,
+   "10. C. 이격거리 상세 결과": 22,
+   "11. 세 분석 통합 비교": 25,
+   "12. 검토 우선순위 및 권고": 26,
+   "13. 민감도·불확실성": 27,
+   "14. 검증 및 품질보증(QA)": 28,
+   "15. 제약과 면책": 30,
+   "16. 출처 및 부록": 31
+  },
+  "key_numbers_found": {
+   "A.n_decreased": true,
+   "A.mean_b": true,
+   "A.worst_id": true,
+   "B.max_new": true,
+   "B.valid_area": true,
+   "C.min_b": true
+  },
+  "all_key_numbers_found": true,
+  "chromium": "159.0.8154.6",
+  "cesium_capture": {
+   "ok": true,
+   "path": "<repo>/backend\\data\\reports\\3ead6b0e5d4c\\figures\\f00_cesium_capture.png",
+   "reason": null
+  }
+ },
+ "previous_pass_pdf_qa": {
+  "exists": true,
+  "size_bytes": 1369661,
+  "pages": 37,
+  "first_page_has_title": true,
+  "hangul_chars_extracted": 9778,
+  "korean_text_extractable": true,
+  "embedded_images": 22,
+  "missing_markers": [],
+  "ok": true
+ }
+}

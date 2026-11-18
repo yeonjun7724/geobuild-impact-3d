@@ -1,0 +1,15 @@
+# secrets
+backend/.env
+.env
+# runtime data / generated artifacts
+backend/data/
+backend/data_dev/
+backend/.venv/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+frontend/node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+.railway/
