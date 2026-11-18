@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { AlertTriangle, BarChart3, ChevronDown, ChevronUp, CircleCheck, CircleAlert, ClipboardList, Download, FileText, Gavel, Lightbulb, ListChecks, OctagonAlert, MousePointerClick, Ruler, Sun, Table2, TreePine } from "lucide-react";
+import { AlertTriangle, BarChart3, ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, ChevronUp, CircleCheck, CircleAlert, ClipboardList, Download, FileText, Gavel, Lightbulb, ListChecks, OctagonAlert, MousePointerClick, Ruler, Sun, Table2, TreePine } from "lucide-react";
 import { api, b64ToU8, downloadText, kstToUtcIso, toCsv, type SceneBuilding, type SunPathData } from "../api";
 import { Disclaimer, ErrorBox, Loading, PlanView, TopBar, divColor, useProject } from "../components/Chrome";
 import SyncedViewers, { type ViewMode } from "../components/SyncedViewers";
@@ -326,32 +326,55 @@ const LV: Record<string, { cls: string; ring: string; icon: React.ReactNode; lab
 
 function ReviewPanel({ rv, onGo }: { rv: any; onGo: (t: Tab) => void }) {
   const top = LV[rv.level] ?? LV.amber;
+  const [showChanges, setShowChanges] = useState(true);
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const items: any[] = rv.items ?? [];
+  const expandable = items.filter((it) => it.detail || it.reference);
+  const allOpen = expandable.length > 0 && expandable.every((it) => open[it.key]);
+  const setAll = (v: boolean) => setOpen(Object.fromEntries(expandable.map((it) => [it.key, v])));
   return (
-    <Panel title="검토 판정 · 이 변경안, 승인해도 되나?" icon={<Gavel size={14} />}>
+    <Panel title="검토 판정 · 이 변경안, 승인해도 되나?" icon={<Gavel size={14} />} collapsible
+      actions={expandable.length > 0 && (
+        <button className="btn btn-sm btn-icon btn-ghost text-ink-2" onClick={() => setAll(!allOpen)} data-testid="review-toggle-all"
+          title={allOpen ? "검토 항목 모두 접기" : "검토 항목 모두 펼치기"} aria-label={allOpen ? "검토 항목 모두 접기" : "검토 항목 모두 펼치기"}>
+          {allOpen ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+        </button>
+      )}>
+      {/* the verdict itself always stays visible */}
       <div className={`mb-3 rounded-lg border p-3 ${top.ring}`} data-testid="review-verdict">
         <div className={`flex items-center gap-1.5 text-[11px] font-bold ${top.cls}`}>{top.icon}{top.label}</div>
         <div className="mt-1 text-[14px] font-bold leading-snug text-white">{rv.verdict.split(":").slice(1).join(":").trim() || rv.verdict}</div>
       </div>
       {rv.changes?.length > 0 && (
         <div className="mb-3">
-          <div className="label mb-1">변경안(B)에서 바뀐 것</div>
-          <ul className="space-y-0.5 text-[12px] text-ink-2">{rv.changes.map((c: any) => <li key={c.building_id}>• {c.text}</li>)}</ul>
+          <button className="label mb-1 flex w-full items-center gap-1 text-left hover:text-ink" onClick={() => setShowChanges(!showChanges)} aria-expanded={showChanges}>
+            {showChanges ? <ChevronDown size={12} /> : <ChevronRight size={12} />}변경안(B)에서 바뀐 것 <span className="font-normal text-muted">· {rv.changes.length}개 동</span>
+          </button>
+          {showChanges && <ul className="space-y-0.5 pl-4 text-[12px] text-ink-2">{rv.changes.map((c: any) => <li key={c.building_id}>• {c.text}</li>)}</ul>}
         </div>
       )}
-      <div className="label mb-1">검토 항목</div>
+      <div className="label mb-1">검토 항목 <span className="font-normal text-muted">· 카드를 누르면 근거가 펼쳐집니다</span></div>
       <div className="space-y-1.5" data-testid="review-items">
-        {rv.items.map((it: any) => {
+        {items.map((it) => {
           const l = LV[it.level] ?? LV.amber;
+          const hasMore = !!(it.detail || it.reference);
+          const isOpen = !!open[it.key];
           return (
-            <button key={it.key} onClick={() => onGo(it.tab)} className="card-2 block w-full p-2.5 text-left transition hover:border-accent/50">
-              <div className="mb-0.5 flex items-center gap-1.5 text-[11.5px] font-bold">
-                <span className={l.cls}>{l.icon}</span><span className="text-ink">{it.title}</span><span className={`ml-1 ${l.cls}`}>{l.label}</span>
-                <span className="ml-auto text-[10.5px] font-medium text-muted">3D에서 보기 →</span>
+            <div key={it.key} className={`card-2 transition ${isOpen ? "border-accent/40" : "hover:border-accent/30"}`}>
+              <button type="button" className="block w-full p-2.5 pb-1.5 text-left" disabled={!hasMore} aria-expanded={hasMore ? isOpen : undefined}
+                onClick={() => setOpen((o) => ({ ...o, [it.key]: !o[it.key] }))}>
+                <div className="mb-0.5 flex items-center gap-1.5 text-[11.5px] font-bold">
+                  {hasMore && (isOpen ? <ChevronDown size={13} className="shrink-0 text-muted" /> : <ChevronRight size={13} className="shrink-0 text-muted" />)}
+                  <span className={l.cls}>{l.icon}</span><span className="text-ink">{it.title}</span><span className={`ml-1 ${l.cls}`}>{l.label}</span>
+                </div>
+                <div className="text-[12.5px] font-semibold leading-snug text-white">{it.headline}</div>
+                {isOpen && it.detail && <div className="mt-1 text-[11.5px] leading-relaxed text-ink-2">{it.detail}</div>}
+                {isOpen && it.reference && <div className="mt-1 text-[10.5px] text-muted">판단선: {it.reference}</div>}
+              </button>
+              <div className="flex justify-end px-2.5 pb-2">
+                <button type="button" className="text-[10.5px] font-medium text-accent hover:underline" onClick={() => onGo(it.tab)}>3D에서 보기 →</button>
               </div>
-              <div className="text-[12.5px] font-semibold leading-snug text-white">{it.headline}</div>
-              {it.detail && <div className="mt-0.5 text-[11.5px] leading-relaxed text-ink-2">{it.detail}</div>}
-              {it.reference && <div className="mt-1 text-[10.5px] text-muted">판단선: {it.reference}</div>}
-            </button>
+            </div>
           );
         })}
       </div>

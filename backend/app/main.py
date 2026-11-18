@@ -143,13 +143,20 @@ def get_project(pid: str, s: Session = Depends(get_session)):
 
 @app.delete("/api/projects/{pid}")
 def delete_project(pid: str, s: Session = Depends(get_session)):
+    """Delete a review case with all analyses, reports, uploads and result files (irreversible)."""
     p = _project(s, pid)
-    if s.scalars(select(AnalysisRun).where(AnalysisRun.project_id == pid)).first():
-        raise HTTPException(409, "분석 이력이 있는 프로젝트는 삭제하지 않음 (보고서 재현성 보존)")
-    s.delete(p)
-    s.commit()
-    services.delete_project_files(pid)
-    return {"deleted": pid}
+    for r in s.scalars(select(AnalysisRun).where(AnalysisRun.project_id == pid)).all():
+        _reap_run(s, r)  # a dead job must not block deletion forever
+    try:
+        return services.delete_project_cascade(s, p)
+    except services.ServiceError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.get("/api/projects/{pid}/delete-preview")
+def delete_preview(pid: str, s: Session = Depends(get_session)):
+    _project(s, pid)
+    return services.project_footprint(s, pid)
 
 
 @app.post("/api/projects/{pid}/demo-seed")

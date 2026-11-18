@@ -590,3 +590,59 @@ def clip_if_large(p: Project, path: Path, half_extent_m: float = 6000.0) -> tupl
 
 def delete_project_files(pid: str) -> None:
     shutil.rmtree(DATA_DIR / "projects" / pid, ignore_errors=True)
+
+
+def _safe_id(x: str) -> bool:
+    return bool(x) and all(c.isalnum() or c in "-_" for c in x)
+
+
+def _dir_size(path: Path) -> int:
+    if not path.exists():
+        return 0
+    return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+
+
+def project_footprint(s: Session, pid: str) -> dict:
+    """What deleting this project would remove (shown to the user before confirming)."""
+    from .db import AnalysisRun, Report
+    runs = s.scalars(select(AnalysisRun).where(AnalysisRun.project_id == pid)).all()
+    run_ids = [r.id for r in runs]
+    reps = s.scalars(select(Report).where(Report.run_id.in_(run_ids))).all() if run_ids else []
+    n_ds = len(s.scalars(select(Dataset).where(Dataset.project_id == pid)).all())
+    size = _dir_size(DATA_DIR / "projects" / pid) + sum(_dir_size(DATA_DIR / "runs" / r) for r in run_ids if _safe_id(r))         + sum(_dir_size(DATA_DIR / "reports" / x.id) for x in reps if _safe_id(x.id))
+    active = [r.id for r in runs if r.status in ("PENDING", "RUNNING")] + [x.id for x in reps if x.status in ("PENDING", "RUNNING")]
+    return {"project_id": pid, "n_runs": len(runs), "n_reports": len(reps), "n_reports_succeeded": sum(x.status == "SUCCEEDED" for x in reps),
+            "n_datasets": n_ds, "bytes": size, "active_jobs": active}
+
+
+def delete_project_cascade(s: Session, p: Project) -> dict:
+    """Delete a project with all its analyses, reports, datasets, provenance and files. Irreversible."""
+    from sqlalchemy import delete
+    from .db import (AnalysisRun, ClearancePair, Floor, RaySample, Report, ShadowGridCell, WindowReceiver)
+    pid = p.id
+    info = project_footprint(s, pid)
+    if info["active_jobs"]:
+        raise ServiceError(f"실행 중인 분석/보고서 작업이 있어 삭제할 수 없음 ({', '.join(info['active_jobs'])}) - 완료 후 다시 시도")
+    run_ids = list(s.scalars(select(AnalysisRun.id).where(AnalysisRun.project_id == pid)))
+    report_ids = list(s.scalars(select(Report.id).where(Report.run_id.in_(run_ids)))) if run_ids else []
+    if run_ids:
+        for model in (RaySample, ShadowGridCell, ClearancePair, WindowReceiver, Floor, Report):
+            s.execute(delete(model).where(model.run_id.in_(run_ids)))
+        s.execute(delete(AnalysisRun).where(AnalysisRun.id.in_(run_ids)))
+    s.execute(delete(SitePad).where(SitePad.project_id == pid))
+    s.execute(delete(TerrainSource).where(TerrainSource.project_id == pid))
+    s.execute(delete(Dataset).where(Dataset.project_id == pid))
+    s.execute(delete(OpenSpacePolygon).where(OpenSpacePolygon.project_id == pid))
+    s.execute(delete(ProvenanceRecord).where(ProvenanceRecord.project_id == pid))
+    s.delete(p)  # cascades buildings, scenarios and their transforms
+    s.commit()
+    # files: paths built from ids under DATA_DIR only (never from stored paths)
+    delete_project_files(pid)
+    for rid in run_ids:
+        if _safe_id(rid):
+            shutil.rmtree(DATA_DIR / "runs" / rid, ignore_errors=True)
+    for rep in report_ids:
+        if _safe_id(rep):
+            shutil.rmtree(DATA_DIR / "reports" / rep, ignore_errors=True)
+    ground_for.cache_clear()
+    return {**info, "deleted": True, "run_ids": run_ids, "report_ids": report_ids}

@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, BarChart3, Building2, FileText, Gavel, PencilRuler, Plus, Scale } from "lucide-react";
+import { AlertTriangle, ArrowRight, BarChart3, Building2, FileText, Gavel, PencilRuler, Plus, Scale, Trash2, X } from "lucide-react";
 import { api, type Project } from "../api";
 import { DataBadges, Disclaimer, ErrorBox, Loading, TopBar } from "../components/Chrome";
 import { Spinner } from "../ui";
 
 export default function ProjectsPage() {
   const [list, setList] = useState<Project[] | null>(null);
+  const [del, setDel] = useState<Project | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState("인천계양 A2 인근 가상단지 · 설계변경 요청 검토");
@@ -58,16 +59,17 @@ export default function ProjectsPage() {
             <div className="card p-10 text-center text-ink-2">아직 검토 건이 없습니다. 위에서 새 검토를 시작하세요.</div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {list.map((p) => <ProjectCard key={p.id} p={p} />)}
+              {list.map((p) => <ProjectCard key={p.id} p={p} onDelete={() => setDel(p)} />)}
             </div>
           )}
         </section>
       </main>
+      {del && <DeleteDialog p={del} onClose={() => setDel(null)} onDeleted={(id) => { setDel(null); setList((l) => (l ?? []).filter((x) => x.id !== id)); }} />}
     </div>
   );
 }
 
-function ProjectCard({ p }: { p: Project }) {
+function ProjectCard({ p, onDelete }: { p: Project; onDelete: () => void }) {
   const run = p.latest_run;
   const ok = run?.status === "SUCCEEDED";
   return (
@@ -79,7 +81,11 @@ function ProjectCard({ p }: { p: Project }) {
         <span className={`chip absolute left-2.5 top-2.5 !bg-[#0b1424]/85 backdrop-blur ${ok ? "chip-ok" : run?.status === "FAILED" ? "chip-bad" : ""}`}>{run ? `${run.status === "SUCCEEDED" ? "분석 완료" : run.status} · ${run.analysis_type}` : "분석 전"}</span>
       </Link>
       <div className="p-3.5">
-        <div className="truncate text-[13.5px] font-bold" title={p.name}>{p.name}</div>
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1 truncate text-[13.5px] font-bold" title={p.name}>{p.name}</div>
+          <button className="btn btn-sm btn-icon btn-ghost -mr-1 -mt-1 text-muted hover:!text-bad" onClick={onDelete} title="검토 건 삭제"
+            aria-label={`검토 건 삭제: ${p.name}`} data-testid="delete-project"><Trash2 size={14} /></button>
+        </div>
         <div className="mb-2 text-[11px] text-muted">{new Date(p.created_at).toLocaleString("ko-KR")} · {p.id}</div>
         <DataBadges b={p.data_badges} />
         <div className="mt-3 flex gap-1.5">
@@ -101,6 +107,58 @@ function SystemStatus({ h }: { h: any }) {
       <span className="chip chip-ok"><span className="live-dot !h-1.5 !w-1.5" />API {h.engine_version}</span>
       <span className={`chip ${r.ok ? "chip-ok" : "chip-syn"}`}>{h.job_backend === "rq" ? `작업큐 Redis · worker ${r.workers ?? 0}` : "작업큐 로컬 스레드"}</span>
       <span className={`chip ${h.chromium?.ok ? "chip-ok" : "chip-bad"}`}>PDF {h.chromium?.ok ? "Chromium OK" : "Chromium 없음"}</span>
+    </div>
+  );
+}
+
+function DeleteDialog({ p, onClose, onDeleted }: { p: Project; onClose: () => void; onDeleted: (id: string) => void }) {
+  const [info, setInfo] = useState<Awaited<ReturnType<typeof api.deletePreview>> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { api.deletePreview(p.id).then(setInfo).catch((e) => setErr(e.message)); }, [p.id]);
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape" && !busy) onClose(); };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, [busy, onClose]);
+  const go = async () => {
+    setBusy(true);
+    setErr(null);
+    try { await api.deleteProject(p.id); onDeleted(p.id); } catch (e: any) { setErr(e.message); setBusy(false); }
+  };
+  const blocked = !!info?.active_jobs.length;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="del-title" onClick={() => !busy && onClose()}>
+      <div className="glass rise w-full max-w-md p-5" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-3 flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bad/15 text-bad"><Trash2 size={17} /></div>
+          <div className="min-w-0 flex-1">
+            <h3 id="del-title" className="text-[15px] font-bold text-white">검토 건을 삭제할까요?</h3>
+            <div className="truncate text-[12.5px] text-ink-2" title={p.name}>{p.name}</div>
+            <div className="font-mono text-[10.5px] text-muted">{p.id}</div>
+          </div>
+          <button className="btn btn-sm btn-icon btn-ghost" onClick={onClose} disabled={busy} aria-label="닫기"><X size={15} /></button>
+        </div>
+        <div className="card-2 mb-3 p-3 text-[12.5px] text-ink-2">
+          {!info ? (err ? null : <div className="flex items-center gap-2"><Spinner />삭제 범위 확인 중…</div>) : (
+            <ul className="space-y-1">
+              <li>분석 실행 <b className="text-ink">{info.n_runs}건</b>과 결과 파일(CSV·GeoJSON·격자)</li>
+              <li>보고서 <b className="text-ink">{info.n_reports}건</b> (PDF·HTML·증거 ZIP)</li>
+              <li>업로드·생성 데이터 <b className="text-ink">{info.n_datasets}건</b> (DEM·건물·도면)</li>
+              <li>설계안 A/B, 검토 판정, 출처 기록 · 디스크 약 <b className="text-ink">{(info.bytes / 1048576).toFixed(1)} MB</b></li>
+            </ul>
+          )}
+        </div>
+        <div className="mb-4 flex gap-2 text-[12px] text-[#ffb4b4]"><AlertTriangle size={14} className="mt-0.5 shrink-0" />삭제하면 되돌릴 수 없습니다. 이미 내려받은 PDF·ZIP 파일은 남지만, 이 앱에서는 다시 열 수 없습니다.</div>
+        {blocked && <div className="mb-3 rounded-lg bg-warn/10 p-2 text-[12px] text-[#f3d9a0]">실행 중인 작업이 있어 지금은 삭제할 수 없습니다 ({info!.active_jobs.join(", ")}). 끝난 뒤 다시 시도하세요.</div>}
+        {err && <div className="mb-3 rounded-lg bg-bad/10 p-2 text-[12px] text-[#ffb4b4]">{err}</div>}
+        <div className="flex justify-end gap-2">
+          <button className="btn" onClick={onClose} disabled={busy}>취소</button>
+          <button className="btn !border-bad/60 !bg-bad/90 !text-white hover:!bg-bad" onClick={go} disabled={busy || !info || blocked} data-testid="confirm-delete">
+            {busy ? <><Spinner />삭제 중…</> : <><Trash2 size={14} />영구 삭제</>}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

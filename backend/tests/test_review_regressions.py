@@ -142,3 +142,37 @@ def test_significant_loss_counts_all_receivers_and_c_without_pairs_reports(c):
     rp = _wait(c, f"/api/reports/{rp['id']}")
     assert rp["status"] == "SUCCEEDED", rp["error"]
     assert rp["quality"]["first_page_has_title"] and rp["quality"]["korean_text_extractable"]
+
+
+def test_delete_project_cascades_rows_and_files_and_blocks_running(c):
+    from app.config import DATA_DIR
+    from app.db import AnalysisRun, Report, SessionLocal, ShadowGridCell, WindowReceiver
+    keep = c.post("/api/projects", json={"name": "keep"}).json()
+    p = c.post("/api/projects", json={"name": "to-delete"}).json()
+    run = c.post(f"/api/projects/{p['id']}/analyses", json={"analysis_type": "ALL", "interval_min": 30, "grid_spacing_m": 5,
+                                                             "include_sensitivity": False, "reuse_cache": False}).json()
+    run = _wait(c, f"/api/analyses/{run['id']}")
+    assert run["status"] == "SUCCEEDED"
+    rp = _wait(c, f"/api/reports/{c.post(f'/api/analyses/{run['id']}/reports').json()['id']}")
+    assert rp["status"] == "SUCCEEDED"
+    prev = c.get(f"/api/projects/{p['id']}/delete-preview").json()
+    assert prev["n_runs"] == 1 and prev["n_reports"] == 1 and prev["bytes"] > 0 and prev["active_jobs"] == []
+    assert (DATA_DIR / "runs" / run["id"]).exists() and (DATA_DIR / "reports" / rp["id"]).exists()
+    r = c.delete(f"/api/projects/{p['id']}")
+    assert r.status_code == 200 and r.json()["deleted"]
+    assert c.get(f"/api/projects/{p['id']}").status_code == 404
+    assert c.get(f"/api/analyses/{run['id']}").status_code == 404
+    assert not (DATA_DIR / "projects" / p["id"]).exists()
+    assert not (DATA_DIR / "runs" / run["id"]).exists() and not (DATA_DIR / "reports" / rp["id"]).exists()
+    with SessionLocal() as s:
+        assert s.query(ShadowGridCell).filter_by(run_id=run["id"]).count() == 0
+        assert s.query(WindowReceiver).filter_by(run_id=run["id"]).count() == 0
+        assert s.query(Report).filter_by(run_id=run["id"]).count() == 0
+    assert c.get(f"/api/projects/{keep['id']}").status_code == 200  # other projects untouched
+    # a running job blocks deletion
+    with SessionLocal() as s:
+        s.add(AnalysisRun(project_id=keep["id"], analysis_type="C", status="RUNNING", params={}, snapshot={}, cache_key="x",
+                          logs=[{"t": "2999-01-01T00:00:00+00:00", "stage": "x", "msg": "x"}]))
+        s.commit()
+    r = c.delete(f"/api/projects/{keep['id']}")
+    assert r.status_code == 409 and "실행 중" in r.json()["detail"]
